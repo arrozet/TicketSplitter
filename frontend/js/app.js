@@ -1,5 +1,5 @@
 // URLs de la API (ajustar si es necesario, por ejemplo, si FastAPI corre en un puerto diferente)
-const API_BASE_URL = "http://localhost:8000/api/v1/receipts";
+const API_BASE_URL = "http://localhost:8080/api/v1/receipts";
 
 // Elementos del DOM
 const receiptImageInput = document.getElementById('receiptImage');
