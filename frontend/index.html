@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicketSplitter</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        body {
+            background-color: #f5f7fa; /* Un fondo ligeramente grisáceo */
+        }
+        .hero-body .title,
+        .hero-body .subtitle {
+            color: #fff; /* Texto blanco para el hero */
+        }
+        .section-box {
+            background-color: #ffffff;
+            border-radius: 6px;
+            box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .item-list { margin-bottom: 20px; }
+        .user-assignment-section { margin-top: 20px; }
+        .user-block {
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .user-block .title {
+            margin-bottom: 0.5rem;
+        }
+        #splitResults { margin-top: 30px; }
+        .error-message { color: red; margin-top: 10px;}
+        .table th, .table td {
+            vertical-align: middle;
+        }
+        #rawTextContainer {
+            max-height: 150px; 
+            overflow-y: auto; 
+            background-color: #f5f5f5; 
+            padding: 10px; 
+            margin-bottom:15px; 
+            border-radius:4px; 
+            border: 1px solid #dbdbdb;
+        }
+        #rawTextContainer pre {
+            white-space: pre-wrap; /* Para que el texto del OCR se ajuste */
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero is-primary">
+        <div class="hero-body">
+            <div class="container">
+                <h1 class="title">TicketSplitter</h1>
+                <p class="subtitle">Easily upload your receipt image and split expenses.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        
+        <div id="errorDisplay" class="notification is-danger is-light is-hidden" style="margin-bottom: 1.5rem;"></div>
+
+        <!-- Upload Section -->
+        <div class="section-box" id="uploadBox">
+            <h2 class="title is-4">1. Upload Receipt</h2>
+            <div class="field">
+                <label class="label" for="receiptImage">Receipt Image</label>
+                <div class="control">
+                    <div class="file has-name is-fullwidth">
+                        <label class="file-label">
+                            <input class="file-input" type="file" id="receiptImage" accept="image/*">
+                            <span class="file-cta">
+                                <span class="file-icon"><i class="fas fa-upload"></i></span> <!-- Necesitaría FontAwesome para esto -->
+                                <span class="file-label">Choose a file…</span>
+                            </span>
+                            <span class="file-name" id="fileNameDisplay">No file selected</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <div class="control">
+                    <button class="button is-primary is-fullwidth" id="uploadButton">Upload and Process</button>
+                </div>
+            </div>
+            <progress class="progress is-small is-primary is-hidden" max="100" id="uploadProgress"></progress>
+        </div>
+
+        <!-- Parsed Items Section -->
+        <div class="section-box is-hidden" id="parsedItemsBox">
+            <h2 class="title is-4">2. Receipt Items</h2>
+            <p style="margin-bottom: 1rem;">Processed Receipt ID: <strong id="receiptIdDisplay"></strong></p>
+            
+            <div id="rawTextContainer">
+                <h4 class="subtitle is-6">Extracted Text (OCR):</h4>
+                <pre id="rawText"></pre>
+            </div>
+
+            <div class="table-container">
+                <table class="table is-striped is-fullwidth is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Description</th>
+                            <th>Qty.</th>
+                            <th>Unit Price</th>
+                            <th>Total Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody"></tbody>
+                </table>
+            </div>
+            <div class="columns is-multiline" style="margin-top:1rem;">
+                <div class="column is-one-third">
+                    <p><strong>Detected Subtotal:</strong> <span id="subtotalDisplay">-</span></p>
+                </div>
+                <div class="column is-one-third">
+                    <p><strong>Detected Tax:</strong> <span id="taxDisplay">-</span></p>
+                </div>
+                <div class="column is-one-third">
+                    <p><strong>Detected Total:</strong> <span id="totalDisplay">-</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignment Section -->
+        <div class="section-box is-hidden" id="assignmentBox">
+            <h2 class="title is-4">3. Assign Items to People</h2>
+            <div class="field is-horizontal">
+                <div class="field-body">
+                    <div class="field">
+                        <label class="label" for="userNameInput">Person's Name:</label>
+                        <div class="control">
+                            <input class="input" type="text" id="userNameInput" placeholder="E.g., Alice">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">&nbsp;</label> <!-- Spacer for button alignment -->
+                        <div class="control">
+                            <button class="button is-info" id="addPersonButton">Add Person</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="userAssignments" class="user-assignment-section"></div>
+            <div class="field" style="margin-top: 20px;">
+                <div class="control">
+                    <button class="button is-success is-large is-fullwidth" id="calculateSplitButton">Calculate Split</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="section-box is-hidden" id="splitResultsBox">
+            <h2 class="title is-4">4. Split Results</h2>
+            <div class="table-container">
+                <table class="table is-bordered is-fullwidth is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Person</th>
+                            <th>Assigned Items</th>
+                            <th>Total Due</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody"></tbody>
+                </table>
+            </div>
+            <p style="margin-top: 1rem; font-size: 1.2rem;"><strong>Total Calculated (Sum of Shares):</strong> <strong id="finalCalculatedTotalDisplay">-</strong></p>
+        </div>
+    </div>
+
+    <script src="./js/app.js"></script>
+    <script>
+        // Script para mostrar el nombre del archivo en el input de tipo file de Bulma
+        const fileInput = document.getElementById('receiptImage');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        if (fileInput && fileNameDisplay) {
+            fileInput.onchange = () => {
+                if (fileInput.files.length > 0) {
+                    fileNameDisplay.textContent = fileInput.files[0].name;
+                } else {
+                    fileNameDisplay.textContent = 'No file selected';
+                }
+            };
+        }
+    </script>
+</body>
+</html> 
