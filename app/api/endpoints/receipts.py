@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Body, Depends
 from typing import Dict, Any, List
 import datetime
 import uuid
+import os
 
 from app.services.ocr_service import OCRService
 from app.services.parser_service import ParserService
@@ -21,11 +22,10 @@ processed_receipts_db: Dict[str, ReceiptParseResponse] = {}
 # y la configuración de los servicios (ej. pasar configuraciones específicas).
 
 def get_ocr_service():
-    """Provee una instancia del servicio OCR."""
-    # Aquí se podría configurar TESSERACT_CMD si es necesario, ej. desde variables de entorno:
-    # import os
-    # TESSERACT_CMD = os.getenv("TESSERACT_EXECUTABLE")
-    # return OCRService(tesseract_cmd=TESSERACT_CMD)
+    """Provee una instancia del servicio OCR (ahora usando Gemini)."""
+    # OCRService ahora maneja la obtención de la API key desde variables de entorno
+    # o usa la que se le pase directamente (o la hardcodeada como fallback).
+    # No es necesario pasarle la API key aquí explícitamente si está como variable de entorno GEMINI_API_KEY.
     return OCRService()
 
 def get_parser_service():

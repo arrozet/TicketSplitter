@@ -1,125 +1,141 @@
-import pytesseract
+import google.generativeai as genai
 from PIL import Image
 import io
-import cv2
-import numpy as np
-import os # Importar os para leer variables de entorno
+# import cv2 # Ya no es necesario para el preprocesamiento si Gemini lo maneja bien
+# import numpy as np # Ya no es necesario
+import os
+
+# ¡¡¡ADVERTENCIA DE SEGURIDAD!!!
+# Es MUY RECOMENDABLE cargar la API key desde una variable de entorno en producción.
+# Ejemplo: API_KEY = os.getenv("GEMINI_API_KEY")
+# No la dejes hardcodeada así, especialmente si el código es compartido o público.
 
 class OCRService:
-    def __init__(self, tesseract_cmd: str = None):
+    def __init__(self, api_key: str = None):
         """
-        Inicializa el servicio OCR.
-        Args:
-            tesseract_cmd: Ruta al ejecutable de Tesseract. Si es None, se intenta leer
-                           de la variable de entorno TESSERACT_PATH o se asume que está en el PATH del sistema.
-                           Ejemplo en Windows: r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        Inicializa el servicio OCR usando la API de Gemini.
         """
-        cmd_to_use = tesseract_cmd
-        if not cmd_to_use:
-            cmd_to_use = os.getenv("TESSERACT_PATH")
+        # Intentar obtener la API key de la variable de entorno
+        retrieved_env_api_key = os.getenv("GEMINI_API_KEY")
+        print(f"DEBUG: Valor de GEMINI_API_KEY obtenido de os.getenv(): '{retrieved_env_api_key}'") # <-- LÍNEA DE PRUEBA
 
-        if cmd_to_use:
-            # Solo asigna pytesseract.tesseract_cmd si se proporciona una ruta explícita
-            # o se encuentra en la variable de entorno.
-            # Si sigue siendo None, pytesseract buscará en el PATH del sistema.
-            pytesseract.tesseract_cmd = cmd_to_use
-            print(f"Usando tesseract_cmd: {cmd_to_use}") # Log para depuración
-        else:
-            print("Tesseract_cmd no especificado ni encontrado en TESSERACT_PATH. Asumiendo que está en el PATH del sistema.")
+        resolved_api_key = api_key or retrieved_env_api_key
+        
+        if not resolved_api_key:
+            print("ERROR: No se pudo resolver la API key de Gemini. Ni pasada como argumento ni encontrada en GEMINI_API_KEY.")
+            raise ValueError("API key de Gemini no encontrada. Configúrala como variable de entorno GEMINI_API_KEY o pásala al constructor.")
+        
+        try:
+            genai.configure(api_key=resolved_api_key)
+            # Usaremos gemini-pro-vision ya que necesitamos procesar imágenes
+            # self.model = genai.GenerativeModel('gemini-pro-vision') # Modelo deprecado
+            self.model = genai.GenerativeModel('gemini-1.5-flash-latest') # Modelo actualizado
+            print(f"DEBUG: Servicio OCR configurado con Gemini API y modelo 'gemini-1.5-flash-latest'.")
+        except Exception as e:
+            print(f"Error al configurar Gemini API: {e}")
+            raise RuntimeError(f"No se pudo configurar Gemini API: {e}") from e
 
     def _preprocess_image_for_ocr(self, image_bytes: bytes) -> Image.Image:
         """
-        Preprocesa la imagen para mejorar los resultados del OCR.
-        Esto puede incluir: conversión a escala de grises, binarización, eliminación de ruido.
+        El preprocesamiento podría no ser tan necesario con Gemini, 
+        pero mantenemos la función por si se quiere añadir algo en el futuro.
+        Por ahora, solo convierte bytes a objeto PIL.Image.
         """
         try:
-            # Convertir bytes a imagen de OpenCV
-            image_np = np.frombuffer(image_bytes, np.uint8)
-            img_cv = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
-
-            if img_cv is None:
-                # Si OpenCV no puede decodificar, intenta con PIL directamente
-                image = Image.open(io.BytesIO(image_bytes))
-                return image.convert('L') # Convertir a escala de grises con PIL
-
-            # 1. Convertir a escala de grises
-            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-
-            # 2. Aplicar umbral adaptativo para binarizar la imagen
-            #    Esto puede ayudar con diferentes condiciones de iluminación en el ticket.
-            # processed_img = cv2.adaptiveThreshold(
-            #     gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY, 11, 2
-            # )
-
-            # O usar umbral de Otsu si el histograma es bimodal
-            _, processed_img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-            # (Opcional) Dilatación y erosión para eliminar ruido
-            # kernel = np.ones((1, 1), np.uint8)
-            # processed_img = cv2.dilate(processed_img, kernel, iterations=1)
-            # processed_img = cv2.erode(processed_img, kernel, iterations=1)
-
-            # (Opcional) Suavizado para reducir ruido
-            # processed_img = cv2.medianBlur(processed_img, 1)
-            # processed_img = cv2.GaussianBlur(processed_img, (3,3), 0)
-
-            # Convertir de vuelta a imagen PIL
-            pil_image = Image.fromarray(processed_img)
-            return pil_image
+            image = Image.open(io.BytesIO(image_bytes))
+            # Podríamos convertir a RGB para asegurar compatibilidad si es necesario.
+            # if image.mode != 'RGB':
+            #     image = image.convert('RGB')
+            return image
         except Exception as e:
-            print(f"Error en preprocesamiento de imagen: {e}. Usando imagen original.")
-            # Fallback a PIL directamente si hay errores con OpenCV
-            return Image.open(io.BytesIO(image_bytes)).convert('L')
+            print(f"Error al cargar la imagen para Gemini: {e}")
+            raise ValueError(f"Los bytes de la imagen no son válidos: {e}") from e
 
     def extract_text_from_image(self, image_bytes: bytes, language: str = 'spa') -> str:
         """
-        Extrae texto de una imagen usando Tesseract OCR.
-
-        Args:
-            image_bytes: La imagen en formato de bytes.
-            language: El idioma para OCR (por defecto 'spa' para español).
-                      Se pueden usar múltiples idiomas, ej: 'spa+eng'.
-
-        Returns:
-            El texto extraído de la imagen.
+        Extrae texto de una imagen usando la API de Gemini.
+        El parámetro 'language' es menos directo que con Tesseract, pero podemos guiar al modelo.
         """
+        print(f"DEBUG: Iniciando extracción de texto con Gemini Vision para imagen de {len(image_bytes)} bytes.")
         try:
-            # Preprocesar la imagen
-            # image = Image.open(io.BytesIO(image_bytes))
-            # preprocessed_image = self._preprocess_image_for_ocr(image)
-            preprocessed_image = self._preprocess_image_for_ocr(image_bytes)
+            pil_image = self._preprocess_image_for_ocr(image_bytes)
+            
+            # El prompt puede ser ajustado para mejorar los resultados.
+            # Incluir el idioma en el prompt puede ayudar.
+            prompt = f"""
+Analiza la siguiente imagen de un ticket de compra o factura. Extrae la información de cada artículo (descripción, cantidad y precio unitario), 
+así como el subtotal, los impuestos (si se especifican) y el importe total final. 
+El idioma principal del ticket es '{language if language else 'español'}'
+Devuelve la información ÚNICAMENTE en formato JSON válido, estructurado de la siguiente manera:
+{{
+  "items": [
+    {{"description": "nombre del artículo", "quantity": numero, "unit_price": numero}},
+    // ... más artículos
+  ],
+  "subtotal": numero_o_null,
+  "tax": numero_o_null,
+  "total": numero_o_null
+}}
+Asegúrate de que todos los valores numéricos sean números (float o integer), no strings. Utiliza un punto como separador decimal. 
+Si una cantidad no es explícita, asume 1. Si el subtotal o los impuestos no se pueden determinar claramente, usa null para sus valores.
+No incluyas ningún texto explicativo adicional fuera del objeto JSON.
+"""
+            
+            # Preparar la entrada para el modelo (imagen + prompt)
+            # La API espera una lista de "partes"
+            response = self.model.generate_content([prompt, pil_image])
+            
+            # Asegurarse de que hay texto en la respuesta
+            if response.parts and response.parts[0].text:
+                extracted_text = response.parts[0].text
+                print(f"DEBUG: Texto bruto devuelto por Gemini: {extracted_text[:300]}...")
 
-            # Configuración para Tesseract
-            # PSM 6: Asumir un solo bloque uniforme de texto.
-            # PSM 4: Asumir una sola columna de texto de tamaños variables.
-            # PSM 11: Texto disperso.
-            # PSM 3: Completamente automático (default)
-            custom_config = r'--oem 3 --psm 6' # Ajustar PSM según la naturaleza de los tickets
+                # Limpiar el texto si está envuelto en bloques de código markdown JSON
+                cleaned_text = extracted_text.strip()
+                if cleaned_text.startswith("```json") or cleaned_text.startswith("```jsoni") : # Considerar la errata
+                    # Encontrar el inicio del JSON real después del ```json\n
+                    start_index = cleaned_text.find('{')
+                    if start_index != -1:
+                        cleaned_text = cleaned_text[start_index:]
+                
+                # Buscar el final del JSON antes del ``` final
+                if cleaned_text.endswith("```"):
+                    end_index = cleaned_text.rfind('}')
+                    if end_index != -1:
+                        cleaned_text = cleaned_text[:end_index + 1]
+                
+                cleaned_text = cleaned_text.strip() # Una limpieza final por si acaso
 
-            text = pytesseract.image_to_string(preprocessed_image, lang=language, config=custom_config)
-            return text
-        except pytesseract.TesseractNotFoundError:
-            # Esta excepción es crucial. Informa al usuario que Tesseract no está instalado/configurado.
-            error_msg = ("Tesseract no encontrado. Asegúrate de que esté instalado y en tu PATH, "
-                         "o especifica la ruta con 'tesseract_cmd' al inicializar OCRService.")
-            print(error_msg)
-            raise RuntimeError(error_msg)
+                print(f"DEBUG: Texto limpiado (esperando JSON): {cleaned_text[:300]}...")
+                return cleaned_text
+            else:
+                # Esto podría ocurrir si la imagen no tiene texto o Gemini no lo encuentra.
+                # O si la respuesta no es lo que esperamos (ej. bloqueada por seguridad).
+                # Revisar response.prompt_feedback puede dar más información.
+                feedback = response.prompt_feedback if hasattr(response, 'prompt_feedback') else "No feedback available"
+                print(f"ADVERTENCIA: Gemini no devolvió texto. Feedback: {feedback}")
+                return "" # Devolver string vacío si no se extrae texto
+
         except Exception as e:
-            print(f"Error durante OCR: {e}")
-            # Considerar si relanzar la excepción o devolver un string vacío/None
-            raise
+            print(f"Error durante la extracción de texto con Gemini API: {e}")
+            # En producción, es mejor loggear esto detalladamente.
+            raise RuntimeError(f"Error al procesar imagen con Gemini: {e}") from e
 
 # Ejemplo de uso (no se ejecutará directamente aquí):
 # if __name__ == '__main__':
-#     ocr_service = OCRService() # Añadir ruta si es necesario: OCRService(tesseract_cmd=r'C:\path\to\tesseract.exe')
+#     # Para probar, asegúrate de que la variable de entorno GEMINI_API_KEY está configurada
+#     # o pasa la clave directamente: ocr_service = OCRService(api_key="TU_API_KEY_AQUI")
+#     ocr_service = OCRService() 
 #     try:
-#         with open("path/to/your/receipt.png", "rb") as f:
+#         # Reemplaza "ruta/a/tu/ticket.png" con una ruta real a una imagen
+#         with open("ruta/a/tu/ticket.png", "rb") as f:
 #             image_bytes = f.read()
 #         text = ocr_service.extract_text_from_image(image_bytes, language='spa')
-#         print("Texto extraído:")
+#         print("\n--- Texto extraído por Gemini ---")
 #         print(text)
 #     except FileNotFoundError:
 #         print("Archivo de imagen de ejemplo no encontrado.")
 #     except RuntimeError as e:
-#         print(f"Error de OCR: {e}") 
+#         print(f"Error de OCR con Gemini: {e}")
+#     except ValueError as e:
+#         print(f"Error de configuración o datos: {e}") 

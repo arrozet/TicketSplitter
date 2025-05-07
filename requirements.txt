@@ -4,7 +4,9 @@ pydantic
 python-multipart
 pytesseract
 Pillow
-pytest
-httpx
-opencv-python-headless
+opencv-python
+numpy
+google-generativeai
+# pytest
+# httpx
 bulma 

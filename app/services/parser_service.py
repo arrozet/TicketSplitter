@@ -1,182 +1,125 @@
 import re
+import json # Para parsear la respuesta JSON de Gemini
 from typing import List, Dict, Any, Optional
 from app.models.item import Item, ItemCreate # Asumiendo que ItemCreate y Item están definidos
 
 class ParserService:
     def __init__(self):
-        # Patrones de expresiones regulares para extraer información.
-        # IMPORTANTE: Estos son ejemplos y probablemente necesiten ser ajustados y ampliados
-        # significativamente para cubrir la diversidad de formatos de tickets reales.
-        # Para una solución robusta, se requerirían técnicas más avanzadas
-        # (ej. modelos de ML entrenados para extracción de entidades en tickets).
-        # Formato: (nombre_del_patron, regex_ compilado)
-        self.item_patterns = [
-            # Patrón 1: "(cantidad) (unidad) NOMBRE DEL PRODUCTO ..... PRECIO"
-            # Ejemplo: "2 KG MANZANAS GOLDEN ..... 3.50"
-            #          "1 UD PAN BARRA ........ 0.80"
-            #          "CERVEZA ESPECIAL ........ 2.50" (cantidad y unidad implícitas como 1 UD)
-            (
-                "qty_unit_name_price",
-                re.compile(
-                    r"^(?:(\d+[,.]?\d*)\s*(?:uds?|kg|gr|l|ml|und|unidades|unidad|u\.)?\s+)?"
-                    r"([A-ZÁÉÍÓÚÑÇa-záéíóúñç0-9\s\-/&'\.+]+?)"
-                    r"\s*(?:\.{2,}|\s{2,})\s*"
-                    r"(\d+[,.]\d{1,2})\s*€?$",
-                    re.IGNORECASE
-                )
-            ),
-            # Patrón 2: "NOMBRE DEL PRODUCTO ..... CANTIDAD x PRECIO_UNITARIO ..... PRECIO_TOTAL"
-            # Ejemplo: "COCA COLA ZERO ...... 2 x 1.50 ...... 3.00"
-            (
-                "name_qty_x_price_totalprice",
-                re.compile(
-                    r"^([A-ZÁÉÍÓÚÑÇa-záéíóúñç0-9\s\-/&'\.+]+?)"
-                    r"\s*(?:\.{2,}|\s{2,})\s*"
-                    r"(\d+[,.]?\d*)\s*x\s*(\d+[,.]\d{1,2})\s*€?"
-                    r"\s*(?:\.{2,}|\s{2,})\s*"
-                    r"(\d+[,.]\d{1,2})\s*€?$",
-                    re.IGNORECASE
-                )
-            ),
-            # Patrón 3: Líneas que solo contienen un precio (podría ser subtotal, total, etc.)
-            # Ejemplo: "TOTAL: 25,50"
-            #          "SUBTOTAL 20.00"
-            (
-                "total_keywords",
-                re.compile(r"^(TOTAL|SUBTOTAL|SUMA|IVA|IMPUESTOS|DESCUENTO|DTO\.?|PROPINA|SERVICIO)\b.*\s+(\d+[,.]\d{1,2})\s*€?$", re.IGNORECASE)
-            )
+        # Las regex para extraer totales podrían seguir siendo útiles como fallback 
+        # o si Gemini no los proporciona de forma consistente en el JSON principal.
+        # Por ahora, las mantenemos por si son necesarias para complementar el JSON.
+        self.total_patterns = [
+            re.compile(r"^(TOTAL\s*(?:NETO|BRUTO|A PAGAR)?):?\s*€?(\d+[,.]\d{1,2})\s*€?$", re.IGNORECASE),
+            re.compile(r"^(SUBTOTAL|BASE IMPONIBLE):?\s*€?(\d+[,.]\d{1,2})\s*€?$", re.IGNORECASE),
+            re.compile(r"^(?:IVA|VAT|IMPUESTOS)\s*(?:\(\s*\d{1,2}\s*%\s*\))?:?\s*€?(\d+[,.]\d{1,2})\s*€?$", re.IGNORECASE),
         ]
         self.next_item_id = 1
 
-    def _parse_price(self, price_str: str) -> float:
-        """Convierte un string de precio (ej. '1,23' o '1.23') a float."""
-        if not price_str: return 0.0
-        return float(price_str.replace(",", "."))
+    def _parse_price(self, price_val: Any) -> Optional[float]:
+        if price_val is None: return None
+        try:
+            if isinstance(price_val, (int, float)):
+                return float(price_val)
+            if isinstance(price_val, str):
+                return float(price_val.replace(",", "."))
+        except ValueError:
+            return None
+        return None
 
-    def _parse_quantity(self, qty_str: Optional[str]) -> float:
-        """Convierte un string de cantidad a float, por defecto 1.0 si es None o vacío."""
-        if not qty_str: return 1.0
-        return float(qty_str.replace(",", "."))
+    def _parse_quantity(self, qty_val: Any) -> float:
+        if qty_val is None: return 1.0 # Default quantity
+        try:
+            if isinstance(qty_val, (int, float)):
+                return float(qty_val)
+            if isinstance(qty_val, str):
+                val = float(qty_val.replace(",", "."))
+                return val if val > 0 else 1.0
+        except ValueError:
+            return 1.0
+        return 1.0
 
-    def parse_text_to_items(self, raw_text: str) -> Dict[str, Any]:
+    def parse_text_to_items(self, raw_text_json: str) -> Dict[str, Any]:
         """
-        Analiza el texto crudo de un ticket y extrae los artículos, subtotal, impuestos y total.
-        Devuelve un diccionario con 'items', 'subtotal', 'tax', 'total'.
+        Analiza el texto (que se espera sea JSON) de un ticket y extrae los artículos y totales.
         """
-        lines = raw_text.split('\n')
         parsed_items: List[Item] = []
         extracted_data = {
             "items": [],
             "subtotal": None,
             "tax": None,
             "total": None,
-            "raw_text": raw_text
+            "raw_text": raw_text_json # Guardamos el JSON original por si acaso
         }
-        self.next_item_id = 1 # Reset for each parse
+        self.next_item_id = 1
 
-        for line in lines:
-            line = line.strip()
-            if not line: # Ignorar líneas vacías
-                continue
+        try:
+            # Intentar parsear el texto de entrada como JSON
+            data_from_gemini = json.loads(raw_text_json)
+        except json.JSONDecodeError as e:
+            print(f"Error al decodificar JSON de Gemini: {e}. Raw text: {raw_text_json[:500]}...")
+            # Si falla el parseo de JSON, podríamos intentar un fallback a regex sobre el texto original,
+            # pero por ahora simplemente devolveremos los datos vacíos y un error.
+            # Opcional: Podríamos re-lanzar un error aquí o manejarlo de otra forma.
+            # raise ValueError(f"El texto de OCR no es un JSON válido: {e}") from e
+            return extracted_data # Devuelve datos vacíos si el JSON es inválido
 
-            matched_item = False
-            for pattern_name, pattern in self.item_patterns:
-                match = pattern.match(line)
-                if match:
-                    if pattern_name == "qty_unit_name_price":
-                        qty_str, name, price_str = match.groups()
-                        quantity = self._parse_quantity(qty_str)
-                        price = self._parse_price(price_str)
-                        name = name.strip()
-                        if name and price > 0:
-                            parsed_items.append(Item(
-                                id=self.next_item_id,
-                                name=name,
-                                quantity=quantity,
-                                price=price,
-                                total_price=round(quantity * price, 2)
-                            ))
-                            self.next_item_id += 1
-                            matched_item = True
-                            break 
-                    elif pattern_name == "name_qty_x_price_totalprice":
-                        name, qty_str, price_unit_str, price_total_str = match.groups()
-                        quantity = self._parse_quantity(qty_str)
-                        price = self._parse_price(price_unit_str) # Usar precio unitario
-                        name = name.strip()
-                        # Opcional: verificar que qty * price_unit == price_total
-                        if name and price > 0:
-                             parsed_items.append(Item(
-                                id=self.next_item_id,
-                                name=name,
-                                quantity=quantity,
-                                price=price,
-                                total_price=round(quantity * price, 2) # o self._parse_price(price_total_str)
-                            ))
-                             self.next_item_id += 1
-                             matched_item = True
-                             break
-                    elif pattern_name == "total_keywords":
-                        keyword, value_str = match.groups()
-                        value = self._parse_price(value_str)
-                        keyword = keyword.upper()
+        gemini_items = data_from_gemini.get("items", [])
+        for g_item in gemini_items:
+            desc = g_item.get("description")
+            qty = self._parse_quantity(g_item.get("quantity"))
+            unit_price = self._parse_price(g_item.get("unit_price"))
 
-                        if "TOTAL" in keyword and extracted_data["total"] is None: # Tomar el primer "TOTAL" como el definitivo
-                            extracted_data["total"] = value
-                        elif "SUBTOTAL" in keyword and extracted_data["subtotal"] is None:
-                            extracted_data["subtotal"] = value
-                        elif ("IVA" in keyword or "IMPUESTO" in keyword) and extracted_data["tax"] is None:
-                            extracted_data["tax"] = value
-                        # Podríamos añadir lógica para descuentos, etc.
-                        matched_item = True # No es un item, pero la línea fue procesada
-                        break
-            # Si ninguna regex de item funcionó, podríamos tener una lógica de fallback
-            # o registrar la línea como no parseada.
-            # if not matched_item:
-            # print(f"Línea no parseada: {line}")
-
+            if desc and unit_price is not None: # unit_price puede ser 0.0
+                parsed_items.append(Item(
+                    id=self.next_item_id,
+                    name=str(desc).strip(),
+                    quantity=qty,
+                    price=unit_price,
+                    total_price=round(qty * unit_price, 2)
+                ))
+                self.next_item_id += 1
+        
         extracted_data["items"] = parsed_items
+        extracted_data["subtotal"] = self._parse_price(data_from_gemini.get("subtotal"))
+        extracted_data["tax"] = self._parse_price(data_from_gemini.get("tax"))
+        extracted_data["total"] = self._parse_price(data_from_gemini.get("total"))
 
-        # Lógica de post-procesamiento:
-        # Si el total no se encontró pero hay items, calcularlo.
+        # Lógica de post-procesamiento (similar a la anterior, puede ser útil si faltan datos del JSON)
+        if not parsed_items and extracted_data["total"] is None:
+             print("No se encontraron ítems ni total en el JSON de Gemini.")
+
         if extracted_data["total"] is None and parsed_items:
             calculated_total = sum(item.total_price for item in parsed_items)
-            # Si tenemos subtotal e impuestos, intentar sumarlos si tiene sentido
             if extracted_data["subtotal"] is not None and extracted_data["tax"] is not None:
-                if abs(calculated_total - (extracted_data["subtotal"] + extracted_data["tax"])) < 0.05: # Margen pequeño
+                if abs(calculated_total - (extracted_data["subtotal"] + extracted_data["tax"])) < 0.05:
                     extracted_data["total"] = round(extracted_data["subtotal"] + extracted_data["tax"], 2)
-                else: # Si no cuadra, usar la suma de items.
-                    extracted_data["total"] = round(calculated_total,2)
+                else:
+                    extracted_data["total"] = round(calculated_total, 2)
             else:
-                extracted_data["total"] = round(calculated_total,2)
+                extracted_data["total"] = round(calculated_total, 2)
 
-        # Si el subtotal no se encontró pero sí el total y los impuestos, calcularlo.
         if extracted_data["subtotal"] is None and extracted_data["total"] is not None and extracted_data["tax"] is not None:
-            extracted_data["subtotal"] = round(extracted_data["total"] - extracted_data["tax"],2)
+            extracted_data["subtotal"] = round(extracted_data["total"] - extracted_data["tax"], 2)
+        elif extracted_data["subtotal"] is None and parsed_items and extracted_data["total"] is not None and extracted_data["tax"] is None:
+            # Si tenemos items y total, pero no subtotal ni impuestos, podemos asumir que el subtotal es la suma de items.
+            # Esto es una heurística y puede no ser siempre correcta.
+            calculated_subtotal_from_items = sum(item.total_price for item in parsed_items)
+            extracted_data["subtotal"] = round(calculated_subtotal_from_items, 2)
 
         return extracted_data
 
-# Ejemplo de uso:
+# Ejemplo de uso (actualizado para esperar JSON):
 # if __name__ == '__main__':
 #     parser = ParserService()
-#     sample_text = """
-#     MERCADONA S.A.
-#     C/ TAL CUAL
-#     -------------------------------------
-#     2 KG PLATANO CANARIAS      3.50
-#     1 UD LECHE DESNATADA       0.90
-#     PAN BARRA                  1.00
-#     CERVEZA ESPECIAL VOLL      2 x 1.20      2.40
-#     
-#     SUBTOTAL: 7.80
-#     IVA (10%): 0.78
-#     TOTAL: 8.58
-#     GRACIAS POR SU VISITA
-#     """
-#     parsed_data = parser.parse_text_to_items(sample_text)
+#     sample_json_text = """ 
+# {\n#   \"items\": [\n#     {\"description\": \"Agua Grande\", \"quantity\": 1, \"unit_price\": 1.30},\n#     {\"description\": \"Caña Cerveza\", \"quantity\": 6, \"unit_price\": 1.30}\n#   ],\n#   \"subtotal\": 9.10,\n#   \"tax\": 0.91,\n#   \"total\": 10.01\n# }\n# """
+#     parsed_data = parser.parse_text_to_items(sample_json_text)
 #     print("Items Parseados:")
-#     for item in parsed_data["items"]:
-#         print(f"  ID: {item.id}, Nombre: {item.name}, Cant: {item.quantity}, Precio: {item.price}, Total: {item.total_price}")
+#     if parsed_data["items"]:
+#         for item in parsed_data["items"]:
+#             print(f"  ID: {item.id}, Nombre: {item.name}, Cant: {item.quantity}, Precio: {item.price}, Total: {item.total_price}")
+#     else:
+#         print("  No se parsearon items.")
 #     print(f"Subtotal: {parsed_data['subtotal']}")
 #     print(f"IVA: {parsed_data['tax']}")
 #     print(f"Total: {parsed_data['total']}") 
