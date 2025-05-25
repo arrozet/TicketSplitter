@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Paleta Minimalista/Militar - Modo Claro */
+    --background: 220 20% 98%; /* Gris muy claro */
+    --foreground: 220 15% 20%; /* Gris oscuro para texto */
+    
+    --muted: 220 15% 90%; /* Gris claro para elementos apagados */
+    --muted-foreground: 220 10% 45%; /* Texto para elementos apagados */
+    
+    --popover: 0 0% 100%; /* Blanco */
+    --popover-foreground: 220 15% 20%;
+
+    --card: 0 0% 100%; /* Blanco */
+    --card-foreground: 220 15% 20%;
+    
+    --border: 220 15% 85%; /* Borde gris claro */
+    --input: 220 15% 88%;  /* Borde para inputs un poco más suave */
+    
+    --primary: 150 30% 35%; /* Verde oliva oscuro/desaturado como primario */
+    --primary-foreground: 150 20% 95%; /* Texto claro para botones primarios */
+    
+    --secondary: 220 10% 65%; /* Gris medio para secundario */
+    --secondary-foreground: 220 20% 98%; /* Texto claro para secundario */
+    
+    --accent: 150 40% 50%; /* Un acento un poco más brillante del primario */
+    --accent-foreground: 150 20% 95%;
+    
+    --destructive: 0 70% 50%; /* Rojo para destructivo */
+    --destructive-foreground: 0 0% 100%;
+    
+    --ring: 150 40% 55%; /* Color para el anillo de foco */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Paleta Minimalista/Militar - Modo Oscuro */
+    --background: 220 10% 12%; /* Gris muy oscuro, casi negro */
+    --foreground: 220 10% 80%; /* Texto gris claro */
+
+    --muted: 220 10% 20%; /* Gris oscuro para elementos apagados */
+    --muted-foreground: 220 10% 55%;
+
+    --popover: 220 10% 18%; /* Un poco más claro que el fondo */
+    --popover-foreground: 220 10% 80%;
+
+    --card: 220 10% 18%;
+    --card-foreground: 220 10% 80%;
+    
+    --border: 220 10% 28%; /* Borde gris oscuro */
+    --input: 220 10% 25%;
+
+    --primary: 150 40% 55%; /* Primario más brillante en modo oscuro */
+    --primary-foreground: 220 10% 10%; /* Texto oscuro para botones primarios */
+
+    --secondary: 220 10% 30%; /* Gris oscuro para secundario */
+    --secondary-foreground: 220 10% 90%;
+
+    --accent: 150 50% 65%;
+    --accent-foreground: 220 10% 10%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 150 50% 70%;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "kern";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

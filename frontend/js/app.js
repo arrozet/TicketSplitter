@@ -1,5 +1,5 @@
 // URLs de la API (ajustar si es necesario, por ejemplo, si FastAPI corre en un puerto diferente)
-const API_BASE_URL = "http://localhost:8080/api/v1/receipts";
+const API_BASE_URL = "http://localhost:8000/api/v1/receipts";
 
 // Elementos del DOM
 const receiptImageInput = document.getElementById('receiptImage');
@@ -72,19 +72,25 @@ uploadButton.addEventListener('click', async () => {
     formData.append("file", file);
 
     showProgress(true);
+    console.log("Intentando subir archivo:", file.name);
 
     try {
+        console.log("Enviando petición a:", `${API_BASE_URL}/upload`);
         const response = await fetch(`${API_BASE_URL}/upload`, {
             method: 'POST',
             body: formData,
         });
 
+        console.log("Respuesta recibida:", response.status, response.statusText);
+        
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: "Unknown upload error." }));
+            console.error("Error completo:", errorData);
             throw new Error(`Error ${response.status}: ${errorData.detail}`);
         }
 
         const data = await response.json();
+        console.log("Datos recibidos:", data);
         currentReceiptId = data.receipt_id;
         parsedItems = data.items || [];
         

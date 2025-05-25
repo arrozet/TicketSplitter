@@ -5,34 +5,109 @@ Aplicación para dividir los gastos de un ticket o factura entre varias personas
 ## Funcionalidades
 
 - Carga de imagen del ticket.
-- Procesamiento OCR para extraer texto.
+- Procesamiento OCR para extraer texto usando Gemini AI.
 - Identificación de artículos y precios.
 - Asignación de artículos a participantes.
 - Cálculo de la parte de cada participante.
+- **NUEVA UI moderna** con Astro + shadcn/ui + Tailwind CSS.
 
 ## Stack Tecnológico
 
 - Backend: Python, FastAPI
-- Frontend: HTML, CSS (Bulma), JavaScript
-- OCR: Tesseract
+- Frontend: **Astro, React, shadcn/ui, Tailwind CSS**
+- OCR: Google Gemini AI
 
-## ¡IMPORTANTE! Requisito: Tesseract OCR
+## ¡IMPORTANTE! Requisito: API Key de Gemini
 
-Esta aplicación **REQUIERE** que Tesseract OCR esté instalado en el sistema donde se ejecuta el backend.
+Esta aplicación **REQUIERE** una API key de Google Gemini configurada como variable de entorno.
 
-- **Instalación**: Sigue las instrucciones para tu sistema operativo (ver la documentación de Tesseract o guías online).
-  - Windows: Descarga desde [UB Mannheim Tesseract GitHub](https://github.com/UB-Mannheim/tesseract/wiki). **Asegúrate de añadir Tesseract al PATH del sistema durante la instalación.**
-  - Linux (Ubuntu/Debian): `sudo apt install tesseract-ocr tesseract-ocr-spa` (incluye español).
-  - macOS (Homebrew): `brew install tesseract tesseract-lang`.
-- **Idiomas**: Asegúrate de instalar los paquetes de idiomas necesarios (ej. español `spa`).
-- **Verificación**: Después de instalar, abre una nueva terminal y ejecuta `tesseract --version`. Si el comando es reconocido, está correctamente instalado en el PATH.
-- **Alternativa (Variable de Entorno)**: Si no puedes añadirlo al PATH, puedes definir la variable de entorno `TESSERACT_PATH` con la ruta completa al ejecutable `tesseract` (ej. `C:\Program Files\Tesseract-OCR\tesseract.exe`).
+1. **Obtener API Key**: Ve a https://makersuite.google.com/app/apikey y crea una nueva API key.
+2. **Configurar Variable de Entorno**:
+   - **Temporal (solo para la sesión actual)**:
+     ```powershell
+     $env:GEMINI_API_KEY="tu-api-key-aquí"
+     ```
+   - **Permanente**: 
+     - Panel de Control → Sistema → Configuración avanzada → Variables de entorno
+     - Añadir nueva variable de usuario: `GEMINI_API_KEY` con tu API key
 
-Si Tesseract no está correctamente instalado y accesible, la funcionalidad de subida de tickets fallará con un error 500.
+## Instalación y Ejecución
 
-## Próximos pasos
-1. Configurar el entorno virtual.
-2. Instalar dependencias de Python: `pip install -r requirements.txt`
-3. **Verificar la instalación de Tesseract OCR (ver sección IMPORTANTE arriba).**
-4. Ejecutar la aplicación backend: `uvicorn app.main:app --reload`
-5. Servir el frontend (ver instrucciones previas, ej. `python -m http.server 8080` desde `frontend/`)
+### Backend (FastAPI)
+
+1. **Configurar el entorno virtual**:
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate  # En Windows
+   ```
+
+2. **Instalar dependencias**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configurar la API key de Gemini** (ver sección anterior).
+
+4. **Ejecutar el backend**:
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+
+### Frontend (Astro + shadcn/ui)
+
+1. **Navegar al directorio del frontend**:
+   ```bash
+   cd frontend-new
+   ```
+
+2. **Instalar dependencias**:
+   ```bash
+   npm install
+   ```
+
+3. **Ejecutar el frontend**:
+   ```bash
+   npm run dev
+   ```
+
+## Acceso a la Aplicación
+
+- **Frontend moderno**: http://localhost:4321 (Astro)
+- **Frontend clásico**: http://localhost:8080 (si usas `python -m http.server 8080` desde `frontend/`)
+- **Backend API**: http://localhost:8000
+- **Documentación API**: http://localhost:8000/docs
+
+## Características de la Nueva UI
+
+✨ **Interfaz moderna y responsive** con shadcn/ui
+🎨 **Diseño elegante** con gradientes y animaciones
+📱 **Totalmente responsive** para móviles y tablets
+🔄 **Indicador de progreso** visual por pasos
+⚡ **Componentes reutilizables** y bien estructurados
+🌙 **Soporte para modo oscuro**
+🎯 **UX mejorada** con mejor feedback visual
+
+## Estructura del Proyecto
+
+```
+TicketSplitter/
+├── app/                    # Backend FastAPI
+├── frontend/              # Frontend clásico (HTML/JS)
+├── frontend-new/          # Frontend moderno (Astro + shadcn/ui)
+│   ├── src/
+│   │   ├── components/    # Componentes React
+│   │   ├── layouts/       # Layouts de Astro
+│   │   ├── pages/         # Páginas de Astro
+│   │   └── styles/        # Estilos globales
+├── tests/                 # Tests
+└── requirements.txt       # Dependencias Python
+```
+
+## Desarrollo
+
+Para desarrollo, ejecuta ambos servidores:
+1. Backend en puerto 8000
+2. Frontend en puerto 4321 (Astro) o 8080 (clásico)
+
+La nueva UI en Astro ofrece una experiencia mucho más moderna y profesional.
+
