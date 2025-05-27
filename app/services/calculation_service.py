@@ -4,7 +4,7 @@ from app.models.receipt import UserShare, ReceiptSplitRequest, ReceiptParseRespo
 
 class CalculationService:
 
-    def calculate_shares(self, parsed_receipt_data: ReceiptParseResponse, split_request: ReceiptSplitRequest) -> ReceiptSplitResponse:
+    def calculateShares(self, parsed_receipt_data: ReceiptParseResponse, split_request: ReceiptSplitRequest) -> ReceiptSplitResponse:
         """
         Calcula la parte correspondiente a cada usuario basándose en los ítems asignados.
         Ahora soporta asignaciones por cantidad específica.
@@ -31,7 +31,7 @@ class CalculationService:
             user_total_cost = 0.0
             
             # Procesar asignaciones (puede ser lista de IDs o lista de ItemAssignment)
-            processed_assignments = self._process_user_assignments(assignments, all_items_map)
+            processed_assignments = self._processUserAssignments(assignments, all_items_map)
             
             for item_id, quantity in processed_assignments:
                 original_item = all_items_map.get(item_id)
@@ -83,7 +83,7 @@ class CalculationService:
         )
 
         # Calcular elementos compartidos (no asignados) y su costo
-        shared_items_info = self._calculate_shared_items(all_items_map, assigned_quantities, num_users)
+        shared_items_info = self._calculateSharedItems(all_items_map, assigned_quantities, num_users)
         cost_of_unassigned_items = shared_items_info['total_cost']
         shared_items_per_user = shared_items_info['items_per_user']
         share_of_unassigned_items_per_user = (cost_of_unassigned_items / num_users) if num_users > 0 else 0
@@ -111,7 +111,7 @@ class CalculationService:
             shares=user_shares
         )
 
-    def _process_user_assignments(self, assignments: Union[List[int], List[ItemAssignment]], all_items_map: Dict[int, Item]) -> List[Tuple[int, float]]:
+    def _processUserAssignments(self, assignments: Union[List[int], List[ItemAssignment]], all_items_map: Dict[int, Item]) -> List[Tuple[int, float]]:
         """
         Procesa las asignaciones de un usuario, normalizándolas a una lista de tuplas (item_id, quantity).
         Mantiene compatibilidad con el formato anterior (lista de IDs) y el nuevo formato (lista de ItemAssignment).
@@ -145,7 +145,7 @@ class CalculationService:
         
         return processed
 
-    def _calculate_shared_items(self, all_items_map: Dict[int, Item], assigned_quantities: Dict[int, float], num_users: int) -> Dict:
+    def _calculateSharedItems(self, all_items_map: Dict[int, Item], assigned_quantities: Dict[int, float], num_users: int) -> Dict:
         """
         Calcula los elementos compartidos (no asignados) y crea items proporcionales para cada usuario.
         """

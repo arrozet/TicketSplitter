@@ -10,7 +10,7 @@ import io
 from app.api.endpoints.receipts import processed_receipts_db 
 
 # --- Tests para el endpoint de Health Check ---
-def test_health_check(client: TestClient):
+def testHealthCheck(client: TestClient):
     """Prueba que el endpoint de health check funcione correctamente."""
     response = client.get("/health")
     assert response.status_code == status.HTTP_200_OK
@@ -19,12 +19,12 @@ def test_health_check(client: TestClient):
 # --- Tests para el endpoint de subida de tickets (/upload) ---
 
 @pytest.fixture
-def mock_ocr_parser_services(mocker): # mocker es una fixture de pytest-mock
+def mockOcrParserServices(mocker): # mocker es una fixture de pytest-mock
     """Mockea los servicios de OCR y Parser para controlar sus salidas."""
-    mock_ocr = mocker.patch('app.services.ocr_service.OCRService.extract_text_from_image')
+    mock_ocr = mocker.patch('app.services.ocr_service.OCRService.extractTextFromImage')
     mock_ocr.return_value = "TEXTO EXTRAIDO DE PRUEBA\nITEM1 10.00\nITEM2 5.50\nTOTAL 15.50"
 
-    mock_parser = mocker.patch('app.services.parser_service.ParserService.parse_text_to_items')
+    mock_parser = mocker.patch('app.services.parser_service.ParserService.parseTextToItems')
     mock_parser.return_value = {
         "items": [
             {"id": 1, "name": "ITEM1", "quantity": 1, "price": 10.00, "total_price": 10.00},
@@ -37,7 +37,7 @@ def mock_ocr_parser_services(mocker): # mocker es una fixture de pytest-mock
     }
     return mock_ocr, mock_parser
 
-def test_upload_receipt_image_success(client: TestClient, mock_ocr_parser_services):
+def testUploadReceiptImageSuccess(client: TestClient, mockOcrParserServices):
     """Prueba la subida exitosa de una imagen de ticket."""
     # Simular un archivo de imagen en memoria
     image_content = b"simulacro de bytes de imagen png"
@@ -60,7 +60,7 @@ def test_upload_receipt_image_success(client: TestClient, mock_ocr_parser_servic
     # Un mejor enfoque sería que los tests que dependen de un ID lo creen ellos mismos.
     pytest.receipt_id_for_test = data["receipt_id"]
 
-def test_upload_receipt_not_an_image(client: TestClient):
+def testUploadReceiptNotAnImage(client: TestClient):
     """Prueba subir un archivo que no es una imagen."""
     text_content = b"esto no es una imagen"
     file_to_upload = {"file": ("test_not_image.txt", io.BytesIO(text_content), "text/plain")}
@@ -71,9 +71,9 @@ def test_upload_receipt_not_an_image(client: TestClient):
     assert "El archivo subido debe ser una imagen" in response.json()["detail"]
 
 # --- Test para obtener datos de un ticket (/receipt_id) ---
-def test_get_receipt_data_found(client: TestClient):
+def testGetReceiptDataFound(client: TestClient):
     """Prueba obtener datos de un ticket existente."""
-    # Este test depende de que test_upload_receipt_image_success se haya ejecutado
+    # Este test depende de que testUploadReceiptImageSuccess se haya ejecutado
     # y haya guardado un receipt_id. Esto no es ideal para tests aislados.
     # En un setup más robusto, se crearía un ticket aquí directamente si es necesario.
     receipt_id = getattr(pytest, 'receipt_id_for_test', None)
@@ -85,14 +85,14 @@ def test_get_receipt_data_found(client: TestClient):
     assert data["receipt_id"] == receipt_id
     assert len(data["items"]) > 0 # Asumiendo que el test de subida pobló items
 
-def test_get_receipt_data_not_found(client: TestClient):
+def testGetReceiptDataNotFound(client: TestClient):
     """Prueba obtener datos de un ticket con un ID inexistente."""
     response = client.get("/api/v1/receipts/non_existent_id_123")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "Ticket no encontrado" in response.json()["detail"]
 
 # --- Tests para dividir un ticket (/{receipt_id}/split) ---
-def test_split_receipt_success(client: TestClient):
+def testSplitReceiptSuccess(client: TestClient):
     """Prueba dividir un ticket exitosamente."""
     receipt_id = getattr(pytest, 'receipt_id_for_test', None)
     assert receipt_id is not None, "El test de subida debe ejecutarse primero y crear un receipt_id"
@@ -121,7 +121,7 @@ def test_split_receipt_success(client: TestClient):
     assert bob_share["amount_due"] == 5.50   # Basado en el mock de parser
     assert data["total_calculated"] == 15.50
 
-def test_split_receipt_no_assignments(client: TestClient):
+def testSplitReceiptNoAssignments(client: TestClient):
     """Prueba dividir un ticket sin proporcionar asignaciones."""
     receipt_id = getattr(pytest, 'receipt_id_for_test', None)
     assert receipt_id is not None, "El test de subida debe ejecutarse primero y crear un receipt_id"
@@ -131,7 +131,7 @@ def test_split_receipt_no_assignments(client: TestClient):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "No se proporcionaron asignaciones" in response.json()["detail"]
 
-def test_split_receipt_ticket_not_found(client: TestClient):
+def testSplitReceiptTicketNotFound(client: TestClient):
     """Prueba dividir un ticket que no existe."""
     split_payload = {"user_item_assignments": {"Alice": [1]}}
     response = client.post("/api/v1/receipts/non_existent_id_456/split", json=split_payload)

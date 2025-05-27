@@ -25,14 +25,14 @@ def client() -> Generator[TestClient, None, None]:
 # from unittest.mock import MagicMock
 #
 # @pytest.fixture
-# def mock_ocr_service() -> MagicMock:
+# def mockOcrService() -> MagicMock:
 # mock = MagicMock(spec=OCRService)
-# mock.extract_text_from_image.return_value = "Texto de prueba del OCR mockeado"
+# mock.extractTextFromImage.return_value = "Texto de prueba del OCR mockeado"
 # return mock
 #
 # Si necesitas sobreescribir dependencias en tus tests, puedes hacerlo así:
-# from app.api.endpoints.receipts import get_ocr_service
-# app.dependency_overrides[get_ocr_service] = lambda: mock_ocr_service
+# from app.api.endpoints.receipts import getOcrService
+# app.dependency_overrides[getOcrService] = lambda: mockOcrService
 
 # Podrías añadir más fixtures aquí, por ejemplo:
 # - Datos de prueba para items o recibos.

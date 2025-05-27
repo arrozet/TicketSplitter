@@ -12,14 +12,14 @@ class TestParserService:
     """
 
     @pytest.fixture
-    def parser_service(self):
+    def parserService(self):
         """Fixture para obtener una instancia del ParserService"""
         return ParserService()
 
-    # ============== PRUEBAS PARA parse_text_to_items ==============
+    # ============== PRUEBAS PARA parseTextToItems ==============
 
-    def test_parse_text_to_items_json_valido_devuelve_items_parseados(self, parser_service):
-        """Prueba que parse_text_to_items con JSON válido devuelve items correctamente parseados"""
+    def testParseTextToItemsJsonValidoDevuelveItemsParseados(self, parserService):
+        """Prueba que parseTextToItems con JSON válido devuelve items correctamente parseados"""
         # Arrange
         json_valido = json.dumps({
             "items": [
@@ -32,7 +32,7 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_valido)
+        resultado = parserService.parseTextToItems(json_valido)
 
         # Assert
         assert len(resultado["items"]) == 2
@@ -48,13 +48,13 @@ class TestParserService:
         assert resultado["tax"] == 0.85
         assert resultado["total"] == 9.35
 
-    def test_parse_text_to_items_json_malformado_devuelve_datos_vacios(self, parser_service):
-        """Prueba que parse_text_to_items con JSON malformado devuelve datos vacíos"""
+    def testParseTextToItemsJsonMalformadoDevuelveDatosVacios(self, parserService):
+        """Prueba que parseTextToItems con JSON malformado devuelve datos vacíos"""
         # Arrange
         json_malformado = '{"items": [{"description": "Café", "quantity": 1'  # JSON incompleto
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_malformado)
+        resultado = parserService.parseTextToItems(json_malformado)
 
         # Assert
         assert len(resultado["items"]) == 0
@@ -63,8 +63,8 @@ class TestParserService:
         assert resultado["total"] is None
         assert resultado["raw_text"] == json_malformado
 
-    def test_parse_text_to_items_sin_totales_calcula_total_automaticamente(self, parser_service):
-        """Prueba que parse_text_to_items sin totales calcula el total automáticamente"""
+    def testParseTextToItemsSinTotalesCalculaTotalAutomaticamente(self, parserService):
+        """Prueba que parseTextToItems sin totales calcula el total automáticamente"""
         # Arrange
         json_sin_totales = json.dumps({
             "items": [
@@ -74,15 +74,15 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_sin_totales)
+        resultado = parserService.parseTextToItems(json_sin_totales)
 
         # Assert
         assert len(resultado["items"]) == 2
         assert resultado["total"] == 20.00  # (2 * 5.00) + (1 * 10.00)
         assert resultado["subtotal"] == 20.00
 
-    def test_parse_text_to_items_con_subtotal_y_tax_calcula_total(self, parser_service):
-        """Prueba que parse_text_to_items con subtotal y tax calcula el total"""
+    def testParseTextToItemsConSubtotalYTaxCalculaTotal(self, parserService):
+        """Prueba que parseTextToItems con subtotal y tax calcula el total"""
         # Arrange
         json_con_subtotal_tax = json.dumps({
             "items": [
@@ -94,7 +94,7 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_subtotal_tax)
+        resultado = parserService.parseTextToItems(json_con_subtotal_tax)
 
         # Assert
         # El servicio calcula total basado en items cuando subtotal+tax no coincide
@@ -102,8 +102,8 @@ class TestParserService:
         assert resultado["subtotal"] == 10.00
         assert resultado["tax"] == 1.00
 
-    def test_parse_text_to_items_con_total_y_tax_calcula_subtotal(self, parser_service):
-        """Prueba que parse_text_to_items con total y tax calcula el subtotal"""
+    def testParseTextToItemsConTotalYTaxCalculaSubtotal(self, parserService):
+        """Prueba que parseTextToItems con total y tax calcula el subtotal"""
         # Arrange
         json_con_total_tax = json.dumps({
             "items": [
@@ -115,15 +115,15 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_total_tax)
+        resultado = parserService.parseTextToItems(json_con_total_tax)
 
         # Assert
         assert resultado["subtotal"] == 10.00
         assert resultado["tax"] == 1.00
         assert resultado["total"] == 11.00
 
-    def test_parse_text_to_items_items_sin_descripcion_son_ignorados(self, parser_service):
-        """Prueba que parse_text_to_items ignora items sin descripción"""
+    def testParseTextToItemsItemsSinDescripcionSonIgnorados(self, parserService):
+        """Prueba que parseTextToItems ignora items sin descripción"""
         # Arrange
         json_con_item_sin_descripcion = json.dumps({
             "items": [
@@ -133,14 +133,14 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_item_sin_descripcion)
+        resultado = parserService.parseTextToItems(json_con_item_sin_descripcion)
 
         # Assert
         assert len(resultado["items"]) == 1
         assert resultado["items"][0].name == "Item válido"
 
-    def test_parse_text_to_items_items_sin_precio_son_ignorados(self, parser_service):
-        """Prueba que parse_text_to_items ignora items sin precio unitario"""
+    def testParseTextToItemsItemsSinPrecioSonIgnorados(self, parserService):
+        """Prueba que parseTextToItems ignora items sin precio unitario"""
         # Arrange
         json_con_item_sin_precio = json.dumps({
             "items": [
@@ -150,14 +150,14 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_item_sin_precio)
+        resultado = parserService.parseTextToItems(json_con_item_sin_precio)
 
         # Assert
         assert len(resultado["items"]) == 1
         assert resultado["items"][0].name == "Item válido"
 
-    def test_parse_text_to_items_asigna_ids_secuenciales(self, parser_service):
-        """Prueba que parse_text_to_items asigna IDs secuenciales a los items"""
+    def testParseTextToItemsAsignaIdsSecuenciales(self, parserService):
+        """Prueba que parseTextToItems asigna IDs secuenciales a los items"""
         # Arrange
         json_con_multiples_items = json.dumps({
             "items": [
@@ -168,15 +168,15 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_multiples_items)
+        resultado = parserService.parseTextToItems(json_con_multiples_items)
 
         # Assert
         assert resultado["items"][0].id == 1
         assert resultado["items"][1].id == 2
         assert resultado["items"][2].id == 3
 
-    def test_parse_text_to_items_precio_cero_es_valido(self, parser_service):
-        """Prueba que parse_text_to_items acepta items con precio cero"""
+    def testParseTextToItemsPrecioCeroEsValido(self, parserService):
+        """Prueba que parseTextToItems acepta items con precio cero"""
         # Arrange
         json_con_precio_cero = json.dumps({
             "items": [
@@ -186,7 +186,7 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_precio_cero)
+        resultado = parserService.parseTextToItems(json_con_precio_cero)
 
         # Assert
         assert len(resultado["items"]) == 2
@@ -194,208 +194,213 @@ class TestParserService:
         assert resultado["items"][0].total_price == 0.0
         assert resultado["items"][1].price == 5.00
 
-    # ============== PRUEBAS PARA _parse_price ==============
+    # ============== PRUEBAS PARA _parsePrice ==============
 
-    def test_parse_price_numero_entero_devuelve_float(self, parser_service):
-        """Prueba que _parse_price convierte números enteros a float"""
+    def testParsePriceNumeroEnteroDevuelveFloat(self, parserService):
+        """Prueba que _parsePrice convierte números enteros a float"""
         # Arrange
         valor_entero = 10
 
         # Act
-        resultado = parser_service._parse_price(valor_entero)
+        resultado = parserService._parsePrice(valor_entero)
 
         # Assert
         assert resultado == 10.0
         assert isinstance(resultado, float)
 
-    def test_parse_price_numero_float_devuelve_mismo_valor(self, parser_service):
-        """Prueba que _parse_price devuelve el mismo valor para floats"""
+    def testParsePriceNumeroFloatDevuelveMismoValor(self, parserService):
+        """Prueba que _parsePrice devuelve el mismo valor para floats"""
         # Arrange
         valor_float = 10.5
 
         # Act
-        resultado = parser_service._parse_price(valor_float)
+        resultado = parserService._parsePrice(valor_float)
 
         # Assert
         assert resultado == 10.5
 
-    def test_parse_price_string_decimal_punto_devuelve_float(self, parser_service):
-        """Prueba que _parse_price convierte string con punto decimal a float"""
+    def testParsePriceStringDecimalPuntoDevuelveFloat(self, parserService):
+        """Prueba que _parsePrice convierte string con punto decimal a float"""
         # Arrange
         string_decimal = "10.50"
 
         # Act
-        resultado = parser_service._parse_price(string_decimal)
+        resultado = parserService._parsePrice(string_decimal)
 
         # Assert
         assert resultado == 10.5
 
-    def test_parse_price_string_decimal_coma_devuelve_float(self, parser_service):
-        """Prueba que _parse_price convierte string con coma decimal a float"""
+    def testParsePriceStringDecimalComaDevuelveFloat(self, parserService):
+        """Prueba que _parsePrice convierte string con coma decimal a float"""
         # Arrange
         string_decimal_coma = "10,50"
 
         # Act
-        resultado = parser_service._parse_price(string_decimal_coma)
+        resultado = parserService._parsePrice(string_decimal_coma)
 
         # Assert
         assert resultado == 10.5
 
-    def test_parse_price_none_devuelve_none(self, parser_service):
-        """Prueba que _parse_price devuelve None para valor None"""
+    def testParsePriceNoneDevuelveNone(self, parserService):
+        """Prueba que _parsePrice devuelve None para valor None"""
         # Arrange
         valor_none = None
 
         # Act
-        resultado = parser_service._parse_price(valor_none)
+        resultado = parserService._parsePrice(valor_none)
 
         # Assert
         assert resultado is None
 
-    def test_parse_price_string_invalido_devuelve_none(self, parser_service):
-        """Prueba que _parse_price devuelve None para string inválido"""
+    def testParsePriceStringInvalidoDevuelveNone(self, parserService):
+        """Prueba que _parsePrice devuelve None para string inválido"""
         # Arrange
         string_invalido = "abc"
 
         # Act
-        resultado = parser_service._parse_price(string_invalido)
+        resultado = parserService._parsePrice(string_invalido)
 
         # Assert
         assert resultado is None
 
-    def test_parse_price_string_vacio_devuelve_none(self, parser_service):
-        """Prueba que _parse_price devuelve None para string vacío"""
+    def testParsePriceStringVacioDevuelveNone(self, parserService):
+        """Prueba que _parsePrice devuelve None para string vacío"""
         # Arrange
         string_vacio = ""
 
         # Act
-        resultado = parser_service._parse_price(string_vacio)
+        resultado = parserService._parsePrice(string_vacio)
 
         # Assert
         assert resultado is None
 
-    # ============== PRUEBAS PARA _parse_quantity ==============
+    # ============== PRUEBAS PARA _parseQuantity ==============
 
-    def test_parse_quantity_numero_entero_devuelve_float(self, parser_service):
-        """Prueba que _parse_quantity convierte números enteros a float"""
+    def testParseQuantityNumeroEnteroDevuelveFloat(self, parserService):
+        """Prueba que _parseQuantity convierte números enteros a float"""
         # Arrange
-        valor_entero = 2
+        valor_entero = 5
 
         # Act
-        resultado = parser_service._parse_quantity(valor_entero)
+        resultado = parserService._parseQuantity(valor_entero)
 
         # Assert
-        assert resultado == 2.0
+        assert resultado == 5.0
         assert isinstance(resultado, float)
 
-    def test_parse_quantity_numero_float_devuelve_mismo_valor(self, parser_service):
-        """Prueba que _parse_quantity devuelve el mismo valor para floats"""
+    def testParseQuantityNumeroFloatDevuelveMismoValor(self, parserService):
+        """Prueba que _parseQuantity devuelve el mismo valor para floats"""
         # Arrange
-        valor_float = 2.5
+        valor_float = 5.5
 
         # Act
-        resultado = parser_service._parse_quantity(valor_float)
+        resultado = parserService._parseQuantity(valor_float)
 
         # Assert
-        assert resultado == 2.5
+        assert resultado == 5.5
 
-    def test_parse_quantity_string_decimal_devuelve_float(self, parser_service):
-        """Prueba que _parse_quantity convierte string decimal a float"""
+    def testParseQuantityStringDecimalDevuelveFloat(self, parserService):
+        """Prueba que _parseQuantity convierte string decimal a float"""
         # Arrange
-        string_decimal = "1.5"
+        string_decimal = "5.5"
 
         # Act
-        resultado = parser_service._parse_quantity(string_decimal)
+        resultado = parserService._parseQuantity(string_decimal)
 
         # Assert
-        assert resultado == 1.5
+        assert resultado == 5.5
 
-    def test_parse_quantity_string_coma_decimal_devuelve_float(self, parser_service):
-        """Prueba que _parse_quantity convierte string con coma decimal a float"""
+    def testParseQuantityStringComaDecimalDevuelveFloat(self, parserService):
+        """Prueba que _parseQuantity convierte string con coma decimal a float"""
         # Arrange
-        string_coma = "2,5"
+        string_decimal_coma = "5,5"
 
         # Act
-        resultado = parser_service._parse_quantity(string_coma)
+        resultado = parserService._parseQuantity(string_decimal_coma)
 
         # Assert
-        assert resultado == 2.5
+        assert resultado == 5.5
 
-    def test_parse_quantity_none_devuelve_uno(self, parser_service):
-        """Prueba que _parse_quantity devuelve 1.0 para valor None"""
+    def testParseQuantityNoneDevuelveUno(self, parserService):
+        """Prueba que _parseQuantity devuelve 1.0 para valor None (default)"""
         # Arrange
         valor_none = None
 
         # Act
-        resultado = parser_service._parse_quantity(valor_none)
+        resultado = parserService._parseQuantity(valor_none)
 
         # Assert
         assert resultado == 1.0
 
-    def test_parse_quantity_string_invalido_devuelve_uno(self, parser_service):
-        """Prueba que _parse_quantity devuelve 1.0 para string inválido"""
+    def testParseQuantityStringInvalidoDevuelveUno(self, parserService):
+        """Prueba que _parseQuantity devuelve 1.0 para string inválido (default)"""
         # Arrange
-        string_invalido = "abc"
+        string_invalido = "xyz"
 
         # Act
-        resultado = parser_service._parse_quantity(string_invalido)
+        resultado = parserService._parseQuantity(string_invalido)
 
         # Assert
         assert resultado == 1.0
 
-    def test_parse_quantity_cero_devuelve_cero(self, parser_service):
-        """Prueba que _parse_quantity devuelve 0.0 para valor cero (int/float)"""
+    def testParseQuantityCeroDevuelveCero(self, parserService):
+        """Prueba que _parseQuantity maneja cantidad cero correctamente"""
         # Arrange
         valor_cero = 0
 
         # Act
-        resultado = parser_service._parse_quantity(valor_cero)
+        resultado = parserService._parseQuantity(valor_cero)
 
         # Assert
         assert resultado == 0.0
 
-    def test_parse_quantity_string_cero_devuelve_uno(self, parser_service):
-        """Prueba que _parse_quantity devuelve 1.0 para string "0" """
+    def testParseQuantityStringCeroDevuelveUno(self, parserService):
+        """Prueba que _parseQuantity para '0' devuelve 1.0 debido a la lógica actual (val > 0 else 1.0)"""
         # Arrange
         string_cero = "0"
+        # Nota: la lógica actual de `_parse_quantity` para string es `val if val > 0 else 1.0`
+        # Si el string es "0", `float("0")` es `0.0`. Como `0.0 > 0` es falso, devuelve `1.0`.
+        # Esto podría ser un comportamiento inesperado o un bug, dependiendo de los requisitos.
+        # Si "0" como string debe ser 0.0, la lógica en `_parse_quantity` debería cambiar.
 
         # Act
-        resultado = parser_service._parse_quantity(string_cero)
+        resultado = parserService._parseQuantity(string_cero)
 
         # Assert
-        assert resultado == 1.0
+        assert resultado == 1.0 # Basado en la lógica actual
 
-    def test_parse_quantity_negativo_devuelve_valor_original(self, parser_service):
-        """Prueba que _parse_quantity devuelve el valor negativo original para int/float"""
+    def testParseQuantityNegativoDevuelveValorOriginal(self, parserService):
+        """Prueba que _parseQuantity devuelve valor negativo si es numérico"""
         # Arrange
-        valor_negativo = -1
+        valor_negativo = -2
 
         # Act
-        resultado = parser_service._parse_quantity(valor_negativo)
+        resultado = parserService._parseQuantity(valor_negativo)
 
         # Assert
-        assert resultado == -1.0  # Los valores negativos int/float se mantienen
+        assert resultado == -2.0
 
-    def test_parse_quantity_string_negativo_devuelve_uno(self, parser_service):
-        """Prueba que _parse_quantity devuelve 1.0 para string negativo"""
+    def testParseQuantityStringNegativoDevuelveUno(self, parserService):
+        """Prueba que _parseQuantity devuelve 1.0 para string negativo (default)"""
         # Arrange
-        string_negativo = "-1"
+        string_negativo = "-2"
+        # Mismo caso que con "0", `float("-2")` es `-2.0`. `-2.0 > 0` es falso, devuelve `1.0`.
 
         # Act
-        resultado = parser_service._parse_quantity(string_negativo)
+        resultado = parserService._parseQuantity(string_negativo)
 
         # Assert
-        assert resultado == 1.0  # Los strings negativos se convierten a 1.0
+        assert resultado == 1.0 # Basado en la lógica actual
 
-    # ============== PRUEBAS DE INTEGRACIÓN ==============
+    # ============== PRUEBAS ADICIONALES PARA parseTextToItems ==============
 
-    def test_parse_text_to_items_json_vacio_devuelve_estructura_vacia(self, parser_service):
-        """Prueba que parse_text_to_items con JSON vacío devuelve estructura vacía"""
+    def testParseTextToItemsJsonVacioDevuelveEstructuraVacia(self, parserService):
+        """Prueba que parseTextToItems con JSON vacío devuelve estructura vacía esperada"""
         # Arrange
         json_vacio = json.dumps({})
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_vacio)
+        resultado = parserService.parseTextToItems(json_vacio)
 
         # Assert
         assert len(resultado["items"]) == 0
@@ -403,12 +408,14 @@ class TestParserService:
         assert resultado["tax"] is None
         assert resultado["total"] is None
 
-    def test_parse_text_to_items_valores_null_manejados_correctamente(self, parser_service):
-        """Prueba que parse_text_to_items maneja valores null correctamente"""
+    def testParseTextToItemsValoresNullManejadosCorrectamente(self, parserService):
+        """Prueba que parseTextToItems maneja valores null en JSON para precios y cantidades"""
         # Arrange
         json_con_nulls = json.dumps({
             "items": [
-                {"description": "Item", "quantity": None, "unit_price": 5.00}
+                {"description": "Item con precio null", "quantity": 1, "unit_price": None},
+                {"description": "Item con cantidad null", "quantity": None, "unit_price": 10.00},
+                {"description": "Item válido", "quantity": 1, "unit_price": 5.00}
             ],
             "subtotal": None,
             "tax": None,
@@ -416,28 +423,26 @@ class TestParserService:
         })
 
         # Act
-        resultado = parser_service.parse_text_to_items(json_con_nulls)
+        resultado = parserService.parseTextToItems(json_con_nulls)
 
         # Assert
-        assert len(resultado["items"]) == 1
-        assert resultado["items"][0].quantity == 1.0  # Valor por defecto
-        # El servicio calcula automáticamente subtotal cuando hay items y no hay total
-        assert resultado["subtotal"] == 5.0  # Calculado de items (1.0 * 5.00)
-        assert resultado["tax"] is None
+        assert len(resultado["items"]) == 2 # Solo el válido y el que tiene cantidad null (qty=1)
+        assert resultado["items"][0].name == "Item con cantidad null"
+        assert resultado["items"][0].quantity == 1.0 # Cantidad null se convierte a 1.0
+        assert resultado["items"][1].name == "Item válido"
 
-    def test_parse_text_to_items_multiples_llamadas_reinicia_ids(self, parser_service):
-        """Prueba que parse_text_to_items reinicia los IDs en múltiples llamadas"""
+    def testParseTextToItemsMultiplesLlamadasReiniciaIds(self, parserService):
+        """Prueba que los IDs de los items se reinician en múltiples llamadas a parseTextToItems"""
         # Arrange
-        json_simple = json.dumps({
-            "items": [
-                {"description": "Item", "quantity": 1, "unit_price": 5.00}
-            ]
-        })
+        json_items_1 = json.dumps({"items": [{"description": "A", "quantity": 1, "unit_price": 1}]})
+        json_items_2 = json.dumps({"items": [{"description": "B", "quantity": 1, "unit_price": 1}]})
 
         # Act
-        resultado1 = parser_service.parse_text_to_items(json_simple)
-        resultado2 = parser_service.parse_text_to_items(json_simple)
+        resultado1 = parserService.parseTextToItems(json_items_1)
+        resultado2 = parserService.parseTextToItems(json_items_2)
 
         # Assert
         assert resultado1["items"][0].id == 1
-        assert resultado2["items"][0].id == 1  # Se reinicia en cada llamada 
+        assert resultado2["items"][0].id == 1 # ID debe ser 1 de nuevo
+
+ 

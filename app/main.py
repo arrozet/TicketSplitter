@@ -31,6 +31,6 @@ app.include_router(receipts.router, prefix="/api/v1/receipts", tags=["Receipts"]
 # app.include_router(groups.router, prefix="/api/v1/groups", tags=["Groups"])
 
 @app.get("/health", tags=["Health"])
-async def health_check():
+async def healthCheck():
     """Endpoint simple para verificar que la API está funcionando."""
     return {"status": "ok"} 

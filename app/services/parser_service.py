@@ -15,7 +15,7 @@ class ParserService:
         ]
         self.next_item_id = 1
 
-    def _parse_price(self, price_val: Any) -> Optional[float]:
+    def _parsePrice(self, price_val: Any) -> Optional[float]:
         if price_val is None: return None
         try:
             if isinstance(price_val, (int, float)):
@@ -26,7 +26,7 @@ class ParserService:
             return None
         return None
 
-    def _parse_quantity(self, qty_val: Any) -> float:
+    def _parseQuantity(self, qty_val: Any) -> float:
         if qty_val is None: return 1.0 # Default quantity
         try:
             if isinstance(qty_val, (int, float)):
@@ -38,7 +38,7 @@ class ParserService:
             return 1.0
         return 1.0
 
-    def parse_text_to_items(self, raw_text_json: str) -> Dict[str, Any]:
+    def parseTextToItems(self, raw_text_json: str) -> Dict[str, Any]:
         """
         Analiza el texto (que se espera sea JSON) de un ticket y extrae los artículos y totales.
         """
@@ -79,8 +79,8 @@ class ParserService:
         gemini_items = data_from_gemini.get("items", [])
         for g_item in gemini_items:
             desc = g_item.get("description")
-            qty = self._parse_quantity(g_item.get("quantity"))
-            unit_price = self._parse_price(g_item.get("unit_price"))
+            qty = self._parseQuantity(g_item.get("quantity"))
+            unit_price = self._parsePrice(g_item.get("unit_price"))
 
             if desc and unit_price is not None: # unit_price puede ser 0.0
                 parsed_items.append(Item(
@@ -93,9 +93,9 @@ class ParserService:
                 self.next_item_id += 1
         
         extracted_data["items"] = parsed_items
-        extracted_data["subtotal"] = self._parse_price(data_from_gemini.get("subtotal"))
-        extracted_data["tax"] = self._parse_price(data_from_gemini.get("tax"))
-        extracted_data["total"] = self._parse_price(data_from_gemini.get("total"))
+        extracted_data["subtotal"] = self._parsePrice(data_from_gemini.get("subtotal"))
+        extracted_data["tax"] = self._parsePrice(data_from_gemini.get("tax"))
+        extracted_data["total"] = self._parsePrice(data_from_gemini.get("total"))
 
         # Lógica de post-procesamiento (similar a la anterior, puede ser útil si faltan datos del JSON)
         if not parsed_items and extracted_data["total"] is None:
@@ -126,7 +126,7 @@ class ParserService:
 #     parser = ParserService()
 #     sample_json_text = """ 
 # {\n#   \"items\": [\n#     {\"description\": \"Agua Grande\", \"quantity\": 1, \"unit_price\": 1.30},\n#     {\"description\": \"Caña Cerveza\", \"quantity\": 6, \"unit_price\": 1.30}\n#   ],\n#   \"subtotal\": 9.10,\n#   \"tax\": 0.91,\n#   \"total\": 10.01\n# }\n# """
-#     parsed_data = parser.parse_text_to_items(sample_json_text)
+#     parsed_data = parser.parseTextToItems(sample_json_text)
 #     print("Items Parseados:")
 #     if parsed_data["items"]:
 #         for item in parsed_data["items"]:

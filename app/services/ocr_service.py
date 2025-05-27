@@ -35,7 +35,7 @@ class OCRService:
             print(f"Error al configurar Gemini API: {e}")
             raise RuntimeError(f"No se pudo configurar Gemini API: {e}") from e
 
-    def _preprocess_image_for_ocr(self, image_bytes: bytes) -> Image.Image:
+    def _preprocessImageForOcr(self, image_bytes: bytes) -> Image.Image:
         """
         El preprocesamiento podría no ser tan necesario con Gemini, 
         pero mantenemos la función por si se quiere añadir algo en el futuro.
@@ -51,14 +51,14 @@ class OCRService:
             print(f"Error al cargar la imagen para Gemini: {e}")
             raise ValueError(f"Los bytes de la imagen no son válidos: {e}") from e
 
-    def extract_text_from_image(self, image_bytes: bytes, language: str = 'spa') -> str:
+    def extractTextFromImage(self, image_bytes: bytes, language: str = 'spa') -> str:
         """
         Extrae texto de una imagen usando la API de Gemini.
         El parámetro 'language' es menos directo que con Tesseract, pero podemos guiar al modelo.
         """
         print(f"DEBUG: Iniciando extracción de texto con Gemini Vision para imagen de {len(image_bytes)} bytes.")
         try:
-            pil_image = self._preprocess_image_for_ocr(image_bytes)
+            pil_image = self._preprocessImageForOcr(image_bytes)
             
             # El prompt puede ser ajustado para mejorar los resultados.
             # Incluir el idioma en el prompt puede ayudar.
@@ -145,7 +145,7 @@ INSTRUCCIONES IMPORTANTES:
 #         # Reemplaza "ruta/a/tu/ticket.png" con una ruta real a una imagen
 #         with open("ruta/a/tu/ticket.png", "rb") as f:
 #             image_bytes = f.read()
-#         text = ocr_service.extract_text_from_image(image_bytes, language='spa')
+#         text = ocr_service.extractTextFromImage(image_bytes, language='spa')
 #         print("\n--- Texto extraído por Gemini ---")
 #         print(text)
 #     except FileNotFoundError:

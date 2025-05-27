@@ -21,28 +21,28 @@ processed_receipts_db: Dict[str, ReceiptParseResponse] = {}
 # Usar Depends de FastAPI permite la inyección de dependencias, facilitando las pruebas
 # y la configuración de los servicios (ej. pasar configuraciones específicas).
 
-def get_ocr_service():
+def getOcrService():
     """Provee una instancia del servicio OCR (ahora usando Gemini)."""
     # OCRService ahora maneja la obtención de la API key desde variables de entorno
     # o usa la que se le pase directamente (o la hardcodeada como fallback).
     # No es necesario pasarle la API key aquí explícitamente si está como variable de entorno GEMINI_API_KEY.
     return OCRService()
 
-def get_parser_service():
+def getParserService():
     """Provee una instancia del servicio de parsing."""
     return ParserService()
 
-def get_calculation_service():
+def getCalculationService():
     """Provee una instancia del servicio de cálculo."""
     return CalculationService()
 
 # --- Endpoints de la API ---
 
 @router.post("/upload", response_model=ReceiptParseResponse)
-async def upload_receipt_image(
+async def uploadReceiptImage(
     file: UploadFile = File(..., description="Archivo de imagen del ticket (PNG, JPG, etc.)"),
-    ocr_service: OCRService = Depends(get_ocr_service),
-    parser_service: ParserService = Depends(get_parser_service)
+    ocr_service: OCRService = Depends(getOcrService),
+    parser_service: ParserService = Depends(getParserService)
 ):
     """
     Endpoint para subir una imagen de un ticket.
@@ -55,9 +55,9 @@ async def upload_receipt_image(
     try:
         image_bytes = await file.read()
         # Extraer texto de la imagen usando el servicio OCR
-        raw_text = ocr_service.extract_text_from_image(image_bytes)
+        raw_text = ocr_service.extractTextFromImage(image_bytes)
         # Parsear el texto extraído para obtener items y otros datos
-        parsed_data_dict = parser_service.parse_text_to_items(raw_text)
+        parsed_data_dict = parser_service.parseTextToItems(raw_text)
 
         receipt_id = str(uuid.uuid4()) # Generar un ID único para este ticket procesado
         
@@ -108,7 +108,7 @@ async def upload_receipt_image(
         raise HTTPException(status_code=500, detail=f"Error inesperado en el servidor: {e}")
 
 @router.get("/{receipt_id}", response_model=ReceiptParseResponse)
-async def get_receipt_data(receipt_id: str):
+async def getReceiptData(receipt_id: str):
     """
     Obtiene los datos de un ticket procesado previamente, usando su ID.
     """
@@ -118,10 +118,10 @@ async def get_receipt_data(receipt_id: str):
     return receipt_data
 
 @router.post("/{receipt_id}/split", response_model=ReceiptSplitResponse)
-async def split_receipt(
+async def splitReceipt(
     receipt_id: str,
     split_request: ReceiptSplitRequest, # Los datos para la división vienen en el cuerpo del request
-    calculation_service: CalculationService = Depends(get_calculation_service)
+    calculation_service: CalculationService = Depends(getCalculationService)
 ):
     """
     Calcula la división de un ticket (previamente procesado y identificado por `receipt_id`)
@@ -141,7 +141,7 @@ async def split_receipt(
 
     try:
         # Usar el servicio de cálculo para obtener las participaciones
-        split_response = calculation_service.calculate_shares(parsed_receipt_data, split_request)
+        split_response = calculation_service.calculateShares(parsed_receipt_data, split_request)
         return split_response
     except Exception as e:
         # Capturar errores durante el cálculo de la división
@@ -150,7 +150,7 @@ async def split_receipt(
 
 # Futura consideración: Endpoint para permitir al usuario corregir/actualizar los ítems parseados
 # @router.put("/{receipt_id}/items", response_model=ReceiptParseResponse)
-# async def update_receipt_items(receipt_id: str, items_update: List[Item]):
+# async def updateReceiptItems(receipt_id: str, items_update: List[Item]):
 #     if receipt_id not in processed_receipts_db:
 #         raise HTTPException(status_code=404, detail="Ticket no encontrado")
 #     
