@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from .item import Item
 import datetime
 
@@ -28,13 +28,21 @@ class ReceiptParseResponse(ReceiptBase):
     receipt_id: str # Identificador único asignado al recibo procesado (ej. UUID).
     items: List[Item] = Field(default_factory=list) # Lista de ítems parseados del recibo.
 
+class ItemAssignment(BaseModel):
+    # Modelo para representar la asignación de una cantidad específica de un elemento
+    item_id: int
+    quantity: float = Field(gt=0, description="Cantidad asignada del elemento (debe ser mayor que 0)")
+
 class ReceiptSplitRequest(BaseModel):
     # Modelo para la solicitud de división de un recibo.
     # Especifica cómo asignar ítems a diferentes usuarios.
+    # Ahora soporta asignaciones por cantidad:
+    # Ejemplo: {"Alice": [{"item_id": 1, "quantity": 2.0}, {"item_id": 2, "quantity": 1.0}], "Bob": [{"item_id": 1, "quantity": 1.0}]}
+    # También mantiene compatibilidad con el formato anterior:
     # Ejemplo: {"Alice": [1, 2], "Bob": [3]} (IDs de ítems del ReceiptParseResponse)
-    user_item_assignments: Dict[str, List[int]] = Field(
+    user_item_assignments: Dict[str, Union[List[int], List[ItemAssignment]]] = Field(
         ..., 
-        description="Diccionario donde cada clave es un nombre de usuario (string) y el valor es una lista de IDs de ítems (int) asignados a ese usuario."
+        description="Diccionario donde cada clave es un nombre de usuario (string) y el valor es una lista de IDs de ítems (int) o asignaciones detalladas (ItemAssignment) asignados a ese usuario."
     )
     # Consideraciones futuras:
     # - Manejo de ítems compartidos explícitamente.
@@ -45,6 +53,7 @@ class UserShare(BaseModel):
     user_id: str # Identificador del usuario (ej. nombre proporcionado en la UI).
     amount_due: float # Cantidad total que este usuario debe pagar.
     items: List[Item] # Lista de ítems (completos) que se le asignaron o contribuyeron a su total.
+    shared_items: List[Item] = Field(default_factory=list) # Lista de ítems compartidos (no asignados específicamente).
 
 class ReceiptSplitResponse(BaseModel):
     # Modelo para la respuesta de una solicitud de división.
@@ -56,4 +65,4 @@ class ReceiptSplitResponse(BaseModel):
 class ReceiptProcessRequest(BaseModel):
     # Podríamos añadir opciones de procesamiento aquí si fuera necesario
     # por ejemplo, forzar moneda, o región para mejorar OCR.
-    pass 
+    pass

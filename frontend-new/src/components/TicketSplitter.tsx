@@ -33,6 +33,7 @@ interface SplitShare {
   user_id: string;
   amount_due: number;
   items: Item[];
+  shared_items: Item[];
 }
 
 interface SplitResult {
@@ -40,16 +41,24 @@ interface SplitResult {
   total_calculated: number;
 }
 
+interface ItemAssignment {
+  item_id: number;
+  quantity: number;
+}
+
 export default function TicketSplitter() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [parsedReceipt, setParsedReceipt] = useState<ParsedReceipt | null>(null);
   const [users, setUsers] = useState<string[]>([]);
   const [newUserName, setNewUserName] = useState('');
   const [userItemSelections, setUserItemSelections] = useState<Record<string, number[]>>({});
   const [splitResult, setSplitResult] = useState<SplitResult | null>(null);
+  const [showUnassignedDialog, setShowUnassignedDialog] = useState(false);
+  const [unassignedItems, setUnassignedItems] = useState<Item[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatCurrency = (amount: number | null) => {
@@ -59,8 +68,21 @@ export default function TicketSplitter() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validar que sea una imagen
+      if (!file.type.startsWith('image/')) {
+        setError("Por favor selecciona un archivo de imagen válido.");
+        return;
+      }
+      
       setSelectedFile(file);
       setError(null);
+      
+      // Crear vista previa de la imagen
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -119,25 +141,57 @@ export default function TicketSplitter() {
     });
   };
 
+  const isItemSelectedByUser = (userName: string, itemId: number): boolean => {
+    return userItemSelections[userName]?.includes(itemId) || false;
+  };
+
+  const getParticipantsForItem = (itemId: number): string[] => {
+    return users.filter(userName => isItemSelectedByUser(userName, itemId));
+  };
+
+  const calculateQuantityPerPersonForItem = (itemId: number): number => {
+    const participants = getParticipantsForItem(itemId);
+    if (participants.length === 0) return 0;
+    const item = parsedReceipt?.items.find(i => i.id === itemId);
+    return item ? item.quantity / participants.length : 0;
+  };
+
+  const getUnassignedItems = (): Item[] => {
+    if (!parsedReceipt) return [];
+    return parsedReceipt.items.filter(item => getParticipantsForItem(item.id).length === 0);
+  };
+
   const calculateSplit = async () => {
     if (!parsedReceipt) {
       setError("Necesitas subir y procesar un ticket primero.");
       return;
     }
-    const assignmentsPayload = Object.entries(userItemSelections)
-      .filter(([_, itemIds]) => itemIds.length > 0)
-      .reduce((obj, [key, value]) => {
-        obj[key] = value;
-        return obj;
-      }, {} as Record<string, number[]>);
-    if (Object.keys(assignmentsPayload).length === 0 && users.length > 0) {
-      users.forEach(name => {
-        if (!assignmentsPayload[name]) assignmentsPayload[name] = [];
-      });
-    } else if (Object.keys(assignmentsPayload).length === 0) {
-      setError("Por favor añade personas para asignar artículos o dividir costos comunes.");
+
+    // Verificar si hay elementos sin asignar
+    const unassignedItemsList = getUnassignedItems();
+    if (unassignedItemsList.length > 0) {
+      setUnassignedItems(unassignedItemsList);
+      setShowUnassignedDialog(true);
       return;
     }
+
+    proceedWithCalculation();
+  };
+
+  const proceedWithCalculation = async () => {
+    if (!parsedReceipt) return;
+
+    // Convertir selecciones a formato de asignaciones con cantidades
+    const assignmentsPayload: Record<string, ItemAssignment[]> = {};
+    
+    users.forEach(userName => {
+      const userSelections = userItemSelections[userName] || [];
+      assignmentsPayload[userName] = userSelections.map(itemId => {
+        const quantity = calculateQuantityPerPersonForItem(itemId);
+        return { item_id: itemId, quantity };
+      });
+    });
+
     setIsLoading(true);
     setError(null);
     try {
@@ -160,9 +214,19 @@ export default function TicketSplitter() {
     }
   };
 
+  const handleUnassignedDialogProceed = () => {
+    setShowUnassignedDialog(false);
+    proceedWithCalculation();
+  };
+
+  const handleUnassignedDialogCancel = () => {
+    setShowUnassignedDialog(false);
+  };
+
   const resetApp = () => {
     setCurrentStep(1);
     setSelectedFile(null);
+    setImagePreview(null);
     setParsedReceipt(null);
     setUsers([]);
     setNewUserName('');
@@ -254,19 +318,87 @@ export default function TicketSplitter() {
                       <CardContent className="space-y-6 pt-4">
                         <div className="space-y-2">
                           <Label htmlFor="receipt-image" className="text-sm font-medium">Imagen del Ticket</Label>
+                          <div 
+                            className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                            onClick={() => fileInputRef.current?.click()}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.add('border-primary', 'bg-primary/5');
+                            }}
+                            onDragLeave={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.remove('border-primary', 'bg-primary/5');
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.remove('border-primary', 'bg-primary/5');
+                              const files = e.dataTransfer.files;
+                              if (files.length > 0) {
+                                const file = files[0];
+                                if (file.type.startsWith('image/')) {
+                                  setSelectedFile(file);
+                                  setError(null);
+                                  const reader = new FileReader();
+                                  reader.onload = (e) => {
+                                    setImagePreview(e.target?.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                } else {
+                                  setError("Por favor selecciona un archivo de imagen válido.");
+                                }
+                              }
+                            }}
+                          >
+                            <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-sm font-medium mb-2">Arrastra tu ticket aquí o haz clic para seleccionar</p>
+                            <p className="text-xs text-muted-foreground">Formatos soportados: JPG, PNG, GIF, WebP</p>
+                          </div>
                           <Input
                             id="receipt-image"
                             type="file"
                             accept="image/*"
                             onChange={handleFileSelect}
                             ref={fileInputRef}
-                            className="file:text-primary-foreground file:bg-primary hover:file:bg-primary/90 transition-colors"
+                            className="hidden"
                           />
                         </div>
                         {selectedFile && (
-                          <p className="text-sm text-muted-foreground">
-                            Archivo: <span className="font-medium text-foreground">{selectedFile.name}</span>
-                          </p>
+                          <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                              Archivo: <span className="font-medium text-foreground">{selectedFile.name}</span>
+                            </p>
+                            {imagePreview && (
+                              <div className="border-2 border-border rounded-lg p-4 bg-muted/20">
+                                <p className="text-sm font-medium mb-3 text-center">Vista Previa:</p>
+                                <div className="flex justify-center">
+                                  <img 
+                                    src={imagePreview} 
+                                    alt="Vista previa del ticket" 
+                                    className="max-w-full max-h-80 object-contain rounded-md shadow-md border"
+                                  />
+                                </div>
+                                <p className="text-xs text-muted-foreground text-center mt-2">
+                                  Verifica que esta sea la imagen correcta antes de continuar
+                                </p>
+                                <div className="flex justify-center mt-3">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedFile(null);
+                                      setImagePreview(null);
+                                      if (fileInputRef.current) {
+                                        fileInputRef.current.value = '';
+                                      }
+                                    }}
+                                    className="text-xs"
+                                  >
+                                    Cambiar Imagen
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                         <Button 
                           onClick={handleUpload} 
@@ -355,7 +487,7 @@ export default function TicketSplitter() {
                           Asignar Artículos
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
-                          Añade personas y asigna artículos a cada una.
+                          Añade personas y luego asigna quién ha consumido cada artículo. Los artículos se dividirán automáticamente entre los participantes.
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -372,29 +504,64 @@ Añadir
                           </Button>
                         </div>
                         {users.length > 0 ? (
-                          <div className="space-y-6">
-                            {users.map((userName) => (
-                              <Card key={userName} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-                                <CardHeader className="bg-muted/30 p-4">
-                                  <CardTitle className="text-lg font-semibold">{userName}</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-4 space-y-2">
-                                  {parsedReceipt.items.map((item) => (
-                                    <label key={item.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
-                                      <input
-                                        type="checkbox"
-                                        checked={userItemSelections[userName]?.includes(item.id) || false}
-                                        onChange={() => toggleItemForUser(userName, item.id)}
-                                        className="form-checkbox h-5 w-5 text-primary rounded border focus:ring-primary transition-all"
-                                      />
-                                      <span className="text-sm flex-grow">{item.name}</span>
-                                      <span className="text-xs font-mono text-muted-foreground">{formatCurrency(item.total_price)}</span>
-                                    </label>
-                                  ))}
-                                  {parsedReceipt.items.length === 0 && <p className="text-sm text-muted-foreground italic">No hay artículos para asignar.</p>}
-                                </CardContent>
-                              </Card>
-                            ))}
+                          <div className="space-y-4">
+                            {parsedReceipt.items.map((item) => {
+                              const participants = getParticipantsForItem(item.id);
+                              const quantityPerPerson = calculateQuantityPerPersonForItem(item.id);
+                              
+                              return (
+                                <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+                                  <CardHeader className="bg-muted/30 p-4">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-grow">
+                                        <CardTitle className="text-lg font-semibold">{item.name}</CardTitle>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                          {item.quantity} unidades × {formatCurrency(item.price)} = {formatCurrency(item.total_price)}
+                                        </p>
+                                        {participants.length > 0 && (
+                                          <p className="text-sm text-blue-600 mt-2">
+                                            {participants.length} participantes → {quantityPerPerson.toFixed(2)} unidades c/u
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Badge variant={participants.length > 0 ? "default" : "secondary"} className="ml-4">
+                                        {participants.length > 0 ? `${participants.length} personas` : "Sin asignar"}
+                                      </Badge>
+                                    </div>
+                                  </CardHeader>
+                                  <CardContent className="p-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                      {users.map((userName) => {
+                                        const isSelected = isItemSelectedByUser(userName, item.id);
+                                        return (
+                                          <label 
+                                            key={userName} 
+                                            className={`flex items-center space-x-2 p-3 rounded-md border cursor-pointer transition-all ${
+                                              isSelected 
+                                                ? 'border-primary bg-primary/10 text-primary' 
+                                                : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                            }`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isSelected}
+                                              onChange={() => toggleItemForUser(userName, item.id)}
+                                              className="form-checkbox h-4 w-4 text-primary rounded border focus:ring-primary transition-all"
+                                            />
+                                            <span className="text-sm font-medium">{userName}</span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                    {participants.length === 0 && (
+                                      <p className="text-sm text-orange-600 text-center mt-3 italic">
+                                        ⚠️ Este artículo se dividirá equitativamente entre todas las personas
+                                      </p>
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
                           </div>
                         ) : (
                             <div className="text-center py-10 text-muted-foreground">
@@ -402,6 +569,51 @@ Añadir
                                 Añade personas para empezar a asignar artículos.
                             </div>
                         )}
+                        
+                        {/* Resumen general */}
+                        {users.length > 0 && parsedReceipt && (
+                          <Card className="mt-8 bg-gradient-to-r from-muted/20 to-muted/10">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <Calculator className="h-5 w-5" />
+                                Resumen de Asignaciones
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                                <div className="p-4 rounded-lg bg-background border">
+                                  <div className="text-2xl font-bold text-green-600">
+                                    {parsedReceipt.items.filter(item => getParticipantsForItem(item.id).length > 0).length}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">Artículos Asignados</div>
+                                </div>
+                                <div className="p-4 rounded-lg bg-background border">
+                                  <div className="text-2xl font-bold text-orange-600">
+                                    {getUnassignedItems().length}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">Sin Asignar</div>
+                                </div>
+                                <div className="p-4 rounded-lg bg-background border">
+                                  <div className="text-2xl font-bold text-primary">
+                                    {users.length}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">Personas</div>
+                                </div>
+                              </div>
+                              {getUnassignedItems().length > 0 && (
+                                <div className="mt-4 p-3 rounded-md bg-orange-50 border border-orange-200">
+                                  <p className="text-sm font-medium text-orange-800 mb-1">
+                                    ⚠️ Artículos que se dividirán equitativamente:
+                                  </p>
+                                  <p className="text-xs text-orange-700">
+                                    {getUnassignedItems().map(item => item.name).join(', ')}
+                                  </p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                        
                         <div className="mt-8 flex justify-end">
                           <Button 
                             onClick={calculateSplit} 
@@ -450,17 +662,41 @@ Añadir
                               <TableRow key={share.user_id} className="hover:bg-muted/50 transition-colors">
                                 <TableCell className="font-semibold py-3">{share.user_id}</TableCell>
                                 <TableCell className="py-3">
-                                  {share.items.length > 0 ? (
-                                    <ul className="list-disc list-inside space-y-1 text-xs">
-                                      {share.items.map((item) => (
-                                        <li key={item.id}>
-                                          {item.name} ({formatCurrency(item.total_price)})
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <span className="text-muted-foreground italic">Costos compartidos / Sin asignación específica</span>
-                                  )}
+                                  <div className="space-y-2">
+                                    {/* Artículos asignados específicamente */}
+                                    {share.items.length > 0 && (
+                                      <div>
+                                        <div className="text-xs font-medium text-green-700 mb-1">Artículos asignados:</div>
+                                        <ul className="list-disc list-inside space-y-1 text-xs">
+                                          {share.items.map((item) => (
+                                            <li key={`assigned-${item.id}`} className="text-green-800">
+                                              {item.name} - Cantidad: {item.quantity} ({formatCurrency(item.total_price)})
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Artículos compartidos (no asignados) */}
+                                    {share.shared_items && share.shared_items.length > 0 && (
+                                      <div>
+                                        <div className="text-xs font-medium text-orange-700 mb-1">Artículos compartidos:</div>
+                                        <ul className="list-disc list-inside space-y-1 text-xs">
+                                          {share.shared_items.map((item) => (
+                                            <li key={`shared-${item.id}`} className="text-orange-800">
+                                              {item.name} - Cantidad: {item.quantity} ({formatCurrency(item.total_price)}) 
+                                              <span className="text-muted-foreground italic"> - dividido equitativamente</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Mensaje si no hay artículos */}
+                                    {share.items.length === 0 && (!share.shared_items || share.shared_items.length === 0) && (
+                                      <span className="text-muted-foreground italic">Solo costos adicionales (impuestos/propinas)</span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right font-bold text-lg py-3">
                                   {formatCurrency(share.amount_due)}
@@ -488,6 +724,53 @@ Añadir
             </div>
           ))}
         </div>
+
+        {/* Diálogo de artículos no asignados */}
+        {showUnassignedDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md shadow-2xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl text-orange-600">
+                  <AlertCircle className="h-6 w-6" />
+                  Artículos Sin Asignar
+                </CardTitle>
+                <CardDescription>
+                  Los siguientes artículos no han sido asignados a ninguna persona:
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
+                  <ul className="space-y-1">
+                    {unassignedItems.map((item) => (
+                      <li key={item.id} className="text-sm">
+                        <span className="font-medium">{item.name}</span>
+                        <span className="text-muted-foreground"> - {item.quantity} unidades ({formatCurrency(item.total_price)})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  ¿Deseas continuar? Los artículos no asignados se dividirán equitativamente entre todas las personas.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleUnassignedDialogCancel}
+                    className="transition-transform transform hover:scale-105"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleUnassignedDialogProceed}
+                    className="transition-transform transform hover:scale-105"
+                  >
+                    Continuar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
       </div>
     </div>
