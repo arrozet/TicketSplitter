@@ -61,6 +61,11 @@ async def upload_receipt_image(
 
         receipt_id = str(uuid.uuid4()) # Generar un ID único para este ticket procesado
         
+        # Verificar si la imagen es un ticket válido
+        is_ticket = parsed_data_dict.get("is_ticket", True)
+        error_message = parsed_data_dict.get("error_message")
+        detected_content = parsed_data_dict.get("detected_content")
+        
         # Crear el objeto de respuesta con los datos parseados
         response = ReceiptParseResponse(
             receipt_id=receipt_id,
@@ -70,12 +75,26 @@ async def upload_receipt_image(
             subtotal=parsed_data_dict.get("subtotal"),
             tax=parsed_data_dict.get("tax"),
             total=parsed_data_dict.get("total"),
-            raw_text=raw_text
+            raw_text=raw_text,
+            is_ticket=is_ticket,
+            error_message=error_message,
+            detected_content=detected_content
         )
         
         processed_receipts_db[receipt_id] = response # Guardar en la "DB" en memoria
+        
+        # Si no es un ticket válido, devolver error 400 con el mensaje DESPUÉS de guardar la respuesta
+        if not is_ticket:
+            raise HTTPException(
+                status_code=400, 
+                detail=error_message or "La imagen proporcionada no parece ser un ticket de compra o factura válido."
+            )
+        
         return response
 
+    except HTTPException:
+        # Re-lanzar HTTPExceptions sin modificar (errores 400, 404, etc.)
+        raise
     except RuntimeError as e:
         # Captura específicamente el error si Tesseract no está configurado/instalado
         if "Tesseract no encontrado" in str(e):

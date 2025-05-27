@@ -48,7 +48,10 @@ class ParserService:
             "subtotal": None,
             "tax": None,
             "total": None,
-            "raw_text": raw_text_json # Guardamos el JSON original por si acaso
+            "raw_text": raw_text_json, # Guardamos el JSON original por si acaso
+            "is_ticket": True,  # Por defecto asumimos que es un ticket
+            "error_message": None,
+            "detected_content": None
         }
         self.next_item_id = 1
 
@@ -62,6 +65,16 @@ class ParserService:
             # Opcional: Podríamos re-lanzar un error aquí o manejarlo de otra forma.
             # raise ValueError(f"El texto de OCR no es un JSON válido: {e}") from e
             return extracted_data # Devuelve datos vacíos si el JSON es inválido
+
+        # Verificar si la imagen es un ticket válido
+        is_ticket = data_from_gemini.get("is_ticket", True)
+        extracted_data["is_ticket"] = is_ticket
+        
+        if not is_ticket:
+            # Si no es un ticket, devolver el mensaje de error
+            extracted_data["error_message"] = data_from_gemini.get("error_message", "La imagen no parece ser un ticket válido.")
+            extracted_data["detected_content"] = data_from_gemini.get("detected_content")
+            return extracted_data
 
         gemini_items = data_from_gemini.get("items", [])
         for g_item in gemini_items:

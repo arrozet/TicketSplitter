@@ -27,6 +27,9 @@ class ReceiptParseResponse(ReceiptBase):
     # Extiende ReceiptBase con información específica post-procesamiento.
     receipt_id: str # Identificador único asignado al recibo procesado (ej. UUID).
     items: List[Item] = Field(default_factory=list) # Lista de ítems parseados del recibo.
+    is_ticket: bool = Field(default=True, description="Indica si la imagen procesada es un ticket válido")
+    error_message: Optional[str] = Field(default=None, description="Mensaje de error si la imagen no es un ticket válido")
+    detected_content: Optional[str] = Field(default=None, description="Descripción de lo que se detectó en la imagen si no es un ticket")
 
 class ItemAssignment(BaseModel):
     # Modelo para representar la asignación de una cantidad específica de un elemento

@@ -63,11 +63,21 @@ class OCRService:
             # El prompt puede ser ajustado para mejorar los resultados.
             # Incluir el idioma en el prompt puede ayudar.
             prompt = f"""
-Analiza la siguiente imagen de un ticket de compra o factura. Extrae la información de cada artículo (descripción, cantidad y precio unitario), 
+PRIMERO: Analiza cuidadosamente la imagen para determinar si es un ticket de compra, factura o recibo.
+
+Si la imagen NO es un ticket de compra/factura/recibo (por ejemplo: es una foto personal, paisaje, documento diferente, pantalla, texto general, etc.), devuelve ÚNICAMENTE este JSON:
+{{
+  "is_ticket": false,
+  "error_message": "La imagen que has subido parece ser [DESCRIBE_QUE_TIPO_DE_IMAGEN_ES]. Por favor, sube una imagen de un ticket de compra o factura válido.",
+  "detected_content": "[breve descripción de lo que se ve en la imagen]"
+}}
+
+Si la imagen SÍ es un ticket de compra/factura/recibo, extrae la información de cada artículo (descripción, cantidad y precio unitario), 
 así como el subtotal, los impuestos (si se especifican) y el importe total final. 
 El idioma principal del ticket es '{language if language else 'español'}'
 Devuelve la información ÚNICAMENTE en formato JSON válido, estructurado de la siguiente manera:
 {{
+  "is_ticket": true,
   "items": [
     {{"description": "nombre del artículo", "quantity": numero, "unit_price": numero}},
     // ... más artículos
@@ -76,9 +86,14 @@ Devuelve la información ÚNICAMENTE en formato JSON válido, estructurado de la
   "tax": numero_o_null,
   "total": numero_o_null
 }}
-Asegúrate de que todos los valores numéricos sean números (float o integer), no strings. Utiliza un punto como separador decimal. 
-Si una cantidad no es explícita, asume 1. Si el subtotal o los impuestos no se pueden determinar claramente, usa null para sus valores.
-No incluyas ningún texto explicativo adicional fuera del objeto JSON.
+
+INSTRUCCIONES IMPORTANTES:
+- Asegúrate de que todos los valores numéricos sean números (float o integer), no strings
+- Utiliza un punto como separador decimal
+- Si una cantidad no es explícita, asume 1
+- Si el subtotal o los impuestos no se pueden determinar claramente, usa null para sus valores
+- No incluyas ningún texto explicativo adicional fuera del objeto JSON
+- Siempre incluye el campo "is_ticket" para indicar si la imagen es un ticket válido
 """
             
             # Preparar la entrada para el modelo (imagen + prompt)

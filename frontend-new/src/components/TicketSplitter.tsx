@@ -27,6 +27,9 @@ interface ParsedReceipt {
   tax: number | null;
   total: number | null;
   raw_text: string;
+  is_ticket: boolean;
+  error_message: string | null;
+  detected_content: string | null;
 }
 
 interface SplitShare {
@@ -59,6 +62,8 @@ export default function TicketSplitter() {
   const [splitResult, setSplitResult] = useState<SplitResult | null>(null);
   const [showUnassignedDialog, setShowUnassignedDialog] = useState(false);
   const [unassignedItems, setUnassignedItems] = useState<Item[]>([]);
+  const [showInvalidImageDialog, setShowInvalidImageDialog] = useState(false);
+  const [invalidImageInfo, setInvalidImageInfo] = useState<{message: string, detected_content?: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatCurrency = (amount: number | null) => {
@@ -102,6 +107,15 @@ export default function TicketSplitter() {
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: "Error desconocido al subir." }));
+        // Si es error 400, probablemente la imagen no es un ticket válido
+        if (response.status === 400) {
+          setInvalidImageInfo({
+            message: errorData.detail || "La imagen no parece ser un ticket válido. Por favor, sube una imagen de un ticket de compra o factura.",
+            detected_content: errorData.detected_content
+          });
+          setShowInvalidImageDialog(true);
+          return;
+        }
         throw new Error(`Error ${response.status}: ${errorData.detail}`);
       }
       const data = await response.json();
@@ -223,6 +237,16 @@ export default function TicketSplitter() {
     setShowUnassignedDialog(false);
   };
 
+  const handleInvalidImageDialogClose = () => {
+    setShowInvalidImageDialog(false);
+    setInvalidImageInfo(null);
+    setSelectedFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const resetApp = () => {
     setCurrentStep(1);
     setSelectedFile(null);
@@ -233,6 +257,8 @@ export default function TicketSplitter() {
     setUserItemSelections({});
     setSplitResult(null);
     setError(null);
+    setShowInvalidImageDialog(false);
+    setInvalidImageInfo(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -765,6 +791,58 @@ Añadir
                     className="transition-transform transform hover:scale-105"
                   >
                     Continuar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Diálogo de imagen inválida */}
+        {showInvalidImageDialog && invalidImageInfo && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-lg shadow-2xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl text-red-600">
+                  <AlertCircle className="h-6 w-6" />
+                  Imagen No Válida
+                </CardTitle>
+                <CardDescription>
+                  La imagen que has subido no es un ticket de compra o factura.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <p className="text-sm text-red-800 font-medium mb-2">
+                    {invalidImageInfo.message}
+                  </p>
+                  {invalidImageInfo.detected_content && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs text-blue-700 font-medium mb-1">
+                        🔍 Hemos detectado que es:
+                      </p>
+                      <p className="text-sm text-blue-800">
+                        {invalidImageInfo.detected_content}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                  <p className="text-sm text-green-800">
+                    <span className="font-medium">💡 Consejo:</span> Sube una foto clara de un ticket de compra, factura o recibo que contenga:
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-green-700 mt-2 space-y-1">
+                    <li>Lista de artículos con precios</li>
+                    <li>Subtotal, impuestos y total</li>
+                    <li>Información del establecimiento</li>
+                  </ul>
+                </div>
+                <div className="flex gap-3 justify-end pt-4">
+                  <Button 
+                    onClick={handleInvalidImageDialogClose}
+                    className="transition-transform transform hover:scale-105"
+                  >
+                    Entendido, subir otra imagen
                   </Button>
                 </div>
               </CardContent>

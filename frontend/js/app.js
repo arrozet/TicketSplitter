@@ -86,6 +86,17 @@ uploadButton.addEventListener('click', async () => {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: "Unknown upload error." }));
             console.error("Error completo:", errorData);
+            // Si es error 400, probablemente la imagen no es un ticket válido
+            if (response.status === 400) {
+                let errorMessage = errorData.detail || "La imagen no parece ser un ticket válido. Por favor, sube una imagen de un ticket de compra o factura.";
+                if (errorData.detected_content) {
+                    errorMessage += `\n\nHemos detectado que la imagen es: ${errorData.detected_content}`;
+                }
+                showError(errorMessage);
+                // Limpiar la selección del archivo
+                receiptImageInput.value = '';
+                return;
+            }
             throw new Error(`Error ${response.status}: ${errorData.detail}`);
         }
 
