@@ -95,8 +95,8 @@ def test_split_receipt_success(mock_ocr_service):
     assert upload_response.status_code == 200
     receipt_id = upload_response.json()["receipt_id"]
     assignments = {
-        "Juan": [0],
-        "María": [1]
+        "Juan": [1],
+        "María": [2]
     }
     response = client.post(
         f"/api/v1/receipts/{receipt_id}/split",
