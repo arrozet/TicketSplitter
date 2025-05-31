@@ -16,7 +16,7 @@ class TestParserServiceIntegration:
 
     # ============== ESCENARIOS REALISTAS ==============
 
-    def testParseTextToItemsRestauranteCompletoDevuelveDatosCorrectos(self, parserService):
+    def parseTextToItemsRestaurant_completo_devuelveDatosCorrectos(self, parserService):
         """Simula una respuesta de IA para un ticket de restaurante completo"""
         # Arrange - Simula respuesta de Gemini para un restaurante
         respuesta_gemini_restaurante = json.dumps({
@@ -44,7 +44,7 @@ class TestParserServiceIntegration:
         assert resultado["tax"] == 1.24
         assert resultado["total"] == 13.64
 
-    def testParseTextToItemsSupermercadoConDescuentosCalculaCorrectamente(self, parserService):
+    def parseTextToItems_supermercadoConDescuentos_calculaCorrectamente(self, parserService):
         """Simula una respuesta de IA para un ticket de supermercado con descuentos"""
         # Arrange
         respuesta_gemini_supermercado = json.dumps({
@@ -68,7 +68,7 @@ class TestParserServiceIntegration:
         assert resultado["items"][3].price == -0.27  # Descuento como precio negativo
         assert resultado["total"] == 5.17
 
-    def testParseTextToItemsFarmaciaSinIvaManejaCorrectamente(self, parserService):
+    def parseTextToItems_farmaciaSinIva_manejaCorrectamente(self, parserService):
         """Simula una respuesta de IA para un ticket de farmacia (productos sin IVA)"""
         # Arrange
         respuesta_gemini_farmacia = json.dumps({
@@ -92,7 +92,7 @@ class TestParserServiceIntegration:
         assert resultado["total"] == 14.20
         assert resultado["subtotal"] == 14.20
 
-    def testParseTextToItemsRespuestaInconsistenteIaCalculaTotales(self, parserService):
+    def parseTextToItems_respuestaInconsistenteIa_calculaTotales(self, parserService):
         """Simula una respuesta inconsistente de IA donde faltan algunos totales"""
         # Arrange
         respuesta_gemini_inconsistente = json.dumps({
@@ -115,7 +115,7 @@ class TestParserServiceIntegration:
         assert resultado["tax"] is None
         assert resultado["total"] == 14.00  # Calculado automáticamente
 
-    def testParseTextToItemsConCaracteresEspecialesManejaCorrectamente(self, parserService):
+    def parseTextToItems_conCaracteresEspeciales_manejaCorrectamente(self, parserService):
         """Prueba que maneja correctamente caracteres especiales en descripciones"""
         # Arrange
         respuesta_con_especiales = json.dumps({
@@ -136,7 +136,7 @@ class TestParserServiceIntegration:
         assert resultado["items"][1].name == "Açaí bowl (100% natural)"
         assert resultado["items"][2].name == "Sándwich jamón/queso"
 
-    def testParseTextToItemsDecimalesDiferentesFormatosNormaliza(self, parserService):
+    def parseTextToItems_decimalesDiferentesFormatos_normaliza(self, parserService):
         """Prueba que maneja diferentes formatos decimales correctamente"""
         # Arrange
         respuesta_decimales_mixtos = json.dumps({
@@ -158,7 +158,7 @@ class TestParserServiceIntegration:
         assert resultado["items"][1].total_price == 3.50  # 2.0 * 1.75
         assert resultado["items"][2].total_price == 2.85  # 3.0 * 0.95
 
-    def testParseTextToItemsTicketGrandeRendimientoAceptable(self, parserService):
+    def parseTextToItems_ticketGrande_rendimientoAceptable(self, parserService):
         """Prueba rendimiento con un ticket grande (muchos items)"""
         # Arrange - Ticket con 50 items
         items_grandes = []
@@ -186,7 +186,7 @@ class TestParserServiceIntegration:
         assert resultado["items"][0].name == "Producto 1"
         assert resultado["items"][49].name == "Producto 50"
 
-    def testParseTextToItemsJsonMalEstructuradoManejaGraciosamente(self, parserService):
+    def parseTextToItems_jsonMalEstructurado_manejaGraciosamente(self, parserService):
         """Prueba manejo de JSON estructurado incorrectamente pero válido"""
         # Arrange
         json_mal_estructurado = json.dumps({
@@ -204,7 +204,7 @@ class TestParserServiceIntegration:
         assert len(resultado["items"]) == 0  # No encuentra items en el array correcto
         assert resultado["total"] == 5.00
 
-    def testParseTextToItemsValoresExtremosManejaCorrectamente(self, parserService):
+    def parseTextToItems_valoresExtremos_manejaCorrectamente(self, parserService):
         """Prueba manejo de valores extremos"""
         # Arrange
         respuesta_valores_extremos = json.dumps({
@@ -225,7 +225,7 @@ class TestParserServiceIntegration:
         assert resultado["items"][2].total_price == 50.00  # 100 * 0.50
         assert resultado["total"] == 1050.00
 
-    def testParseTextToItemsItemsDuplicadosMantieneTodos(self, parserService):
+    def parseTextToItems_itemsDuplicados_mantieneTodos(self, parserService):
         """Prueba que mantiene items duplicados con IDs diferentes"""
         # Arrange
         respuesta_duplicados = json.dumps({
@@ -248,7 +248,7 @@ class TestParserServiceIntegration:
         assert all(item.name == "Café" for item in resultado["items"])
         assert all(item.price == 2.50 for item in resultado["items"])
 
-    def testParseTextToItemsCamposAdicionalesIgnorados(self, parserService):
+    def parseTextToItems_camposAdicionales_ignorados(self, parserService):
         """Prueba que ignora campos adicionales no reconocidos"""
         # Arrange
         respuesta_campos_extra = json.dumps({
@@ -277,7 +277,7 @@ class TestParserServiceIntegration:
         assert resultado["total"] == 5.00
         # Los campos extra son ignorados silenciosamente
 
-    def testParseTextToItemsTotalesConPrecisionDecimalManejaCorrectamente(self, parserService):
+    def parseTextToItems_totalesConPrecisionDecimal_manejaCorrectamente(self, parserService):
         """Prueba manejo correcto de precisión decimal en totales"""
         # Arrange
         respuesta_precision_decimal = json.dumps({
@@ -303,7 +303,7 @@ class TestParserServiceIntegration:
         assert resultado["tax"] == 0.933333
         assert resultado["total"] == 10.266666
 
-    def testParseTextToItemsItemsConCantidadDecimalCalculaCorrectamente(self, parserService):
+    def parseTextToItems_itemsConCantidadDecimal_calculaCorrectamente(self, parserService):
         """Prueba cálculo correcto con cantidades decimales"""
         # Arrange
         respuesta_cantidad_decimal = json.dumps({
@@ -322,4 +322,30 @@ class TestParserServiceIntegration:
         assert resultado["items"][0].total_price == 6.25   # 0.5 * 12.50
         assert resultado["items"][1].total_price == 4.50   # 0.25 * 18.00
         assert resultado["items"][2].total_price == 3.45   # 1.5 * 2.30
-        assert resultado["total"] == 14.20  # Suma de todos los totales 
+        assert resultado["total"] == 14.20  # Suma de todos los totales
+
+    def testParseTextToItemsSupermercadoConDescuentosCalculaCorrectamente(self, parserService):
+        """Prueba cálculo correcto con descuentos en supermercado"""
+        # Arrange
+        respuesta_supermercado = json.dumps({
+            "items": [
+                {"description": "Leche", "quantity": 1, "unit_price": 1.20},
+                {"description": "Pan", "quantity": 1, "unit_price": 0.80},
+                {"description": "Descuento", "quantity": 1, "unit_price": -0.50}
+            ],
+            "subtotal": 1.50,
+            "tax": 0.00,
+            "total": 1.50
+        })
+
+        # Act
+        resultado = parserService.parseTextToItems(respuesta_supermercado)
+
+        # Assert
+        assert len(resultado["items"]) == 3
+        assert resultado["items"][0].total_price == 1.20   # 1 * 1.20
+        assert resultado["items"][1].total_price == 0.80   # 1 * 0.80
+        assert resultado["items"][2].total_price == -0.50  # 1 * -0.50
+        assert resultado["total"] == 1.50  # 1.20 + 0.80 - 0.50
+        assert resultado["is_ticket"] is True
+        assert resultado["error_message"] is None 

@@ -1,6 +1,19 @@
+"""
+Configuración global de pytest.
+"""
+import os
+import sys
+from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from typing import Generator
+
+# Añadir el directorio raíz del proyecto al PYTHONPATH
+project_root = str(Path(__file__).parent.parent)
+sys.path.insert(0, project_root)
+
+# Configuración de variables de entorno para testing
+os.environ["TESTING"] = "true"
 
 # Importar la app principal de FastAPI
 # Asegúrate de que la estructura de tu proyecto permita esta importación.
