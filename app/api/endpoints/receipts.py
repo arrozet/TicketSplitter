@@ -139,6 +139,17 @@ async def splitReceipt(
         # Se necesita saber cómo asignar los items
         raise HTTPException(status_code=400, detail="No se proporcionaron asignaciones de usuarios para dividir el ticket.")
 
+    # Validar que todos los IDs de ítems asignados existen en el ticket
+    all_item_ids = {item.id for item in parsed_receipt_data.items}
+    for user, assignments in split_request.user_item_assignments.items():
+        for assignment in assignments:
+            if isinstance(assignment, dict):
+                item_id = assignment.get('item_id')
+            else:
+                item_id = assignment if isinstance(assignment, int) else getattr(assignment, 'item_id', None)
+            if item_id not in all_item_ids:
+                raise HTTPException(status_code=400, detail="Item no encontrado")
+
     try:
         # Usar el servicio de cálculo para obtener las participaciones
         split_response = calculation_service.calculateShares(parsed_receipt_data, split_request)
