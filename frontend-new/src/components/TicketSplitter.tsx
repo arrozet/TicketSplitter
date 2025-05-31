@@ -419,7 +419,7 @@ export default function TicketSplitter() {
                                     }}
                                     className="text-xs"
                                   >
-                                    Cambiar Imagen
+                                    Cambiar imagen
                                   </Button>
                                 </div>
                               </div>
@@ -611,13 +611,13 @@ Añadir
                                   <div className="text-2xl font-bold text-green-600">
                                     {parsedReceipt.items.filter(item => getParticipantsForItem(item.id).length > 0).length}
                                   </div>
-                                  <div className="text-sm text-muted-foreground">Artículos Asignados</div>
+                                  <div className="text-sm text-muted-foreground">Artículos asignados</div>
                                 </div>
                                 <div className="p-4 rounded-lg bg-background border">
                                   <div className="text-2xl font-bold text-orange-600">
                                     {getUnassignedItems().length}
                                   </div>
-                                  <div className="text-sm text-muted-foreground">Sin Asignar</div>
+                                  <div className="text-sm text-muted-foreground">Sin asignar</div>
                                 </div>
                                 <div className="p-4 rounded-lg bg-background border">
                                   <div className="text-2xl font-bold text-primary">
@@ -805,7 +805,7 @@ Añadir
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl text-red-600">
                   <AlertCircle className="h-6 w-6" />
-                  Imagen No Válida
+                  Imagen no válida
                 </CardTitle>
                 <CardDescription>
                   La imagen que has subido no es un ticket de compra o factura.
