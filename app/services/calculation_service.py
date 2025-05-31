@@ -7,7 +7,7 @@ class CalculationService:
     def calculateShares(self, parsed_receipt_data: ReceiptParseResponse, split_request: ReceiptSplitRequest) -> ReceiptSplitResponse:
         """
         Calcula la parte correspondiente a cada usuario basándose en los ítems asignados.
-        Ahora soporta asignaciones por cantidad específica.
+        Ahora soporta asignaciones por cantidad específica y reparte el IVA correctamente.
 
         Args:
             parsed_receipt_data: Los datos del ticket ya procesados (incluyendo todos los ítems).
@@ -88,21 +88,36 @@ class CalculationService:
         shared_items_per_user = shared_items_info['items_per_user']
         share_of_unassigned_items_per_user = (cost_of_unassigned_items / num_users) if num_users > 0 else 0
 
-        # Considerar el total general del recibo (puede incluir impuestos/propinas no itemizados).
-        receipt_total_overall = parsed_receipt_data.total if parsed_receipt_data.total is not None else total_items_value_from_receipt
-        
-        # Si el total del recibo es mayor que la suma de los items, la diferencia puede ser impuestos/propinas no itemizados.
-        non_itemized_costs = receipt_total_overall - total_items_value_from_receipt
-        share_of_non_itemized_costs_per_user = (non_itemized_costs / num_users) if num_users > 0 and non_itemized_costs > 0 else 0
+        # --- Lógica de IVA ---
+        subtotal = parsed_receipt_data.subtotal if parsed_receipt_data.subtotal is not None else total_items_value_from_receipt
+        tax = parsed_receipt_data.tax if parsed_receipt_data.tax is not None else 0.0
+        total = parsed_receipt_data.total if parsed_receipt_data.total is not None else subtotal + tax
+
+        # Detectar si el IVA está incluido en los artículos
+        # Si subtotal + tax == total (con margen de error pequeño), el IVA NO está incluido
+        # Si subtotal ~= total, el IVA ya está incluido
+        iva_no_incluido = abs((subtotal + tax) - total) < 0.02 and tax > 0
+        iva_incluido = abs(subtotal - total) < 0.02 or tax == 0
+
+        # Calcular el total de artículos asignados a cada usuario (incluyendo compartidos)
+        user_totals = []
+        for share in user_shares:
+            user_total = sum(item.total_price for item in share.items) + share_of_unassigned_items_per_user
+            user_totals.append(user_total)
+
+        total_asignado = sum(user_totals)
+
+        # Reparto del IVA solo si NO está incluido
+        iva_por_usuario = [0.0 for _ in user_shares]
+        if iva_no_incluido and tax > 0 and total_asignado > 0:
+            for idx, user_total in enumerate(user_totals):
+                iva_por_usuario[idx] = (user_total / total_asignado) * tax
+        # Si el IVA ya está incluido, no se reparte nada extra
 
         final_calculated_total = 0.0
-        for share in user_shares:
-            # Suma del valor de los items asignados directamente a este usuario
-            user_assigned_items_total = sum(item.total_price for item in share.items)
-            # Agregar elementos compartidos a este usuario
+        for idx, share in enumerate(user_shares):
             share.shared_items = shared_items_per_user.copy()
-            # La cantidad debida es: sus items + su parte de items no asignados + su parte de costos no itemizados
-            amount_due = user_assigned_items_total + share_of_unassigned_items_per_user + share_of_non_itemized_costs_per_user
+            amount_due = user_totals[idx] + iva_por_usuario[idx]
             share.amount_due = round(amount_due, 2)
             final_calculated_total += share.amount_due
         

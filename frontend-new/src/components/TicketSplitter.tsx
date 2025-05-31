@@ -270,10 +270,10 @@ export default function TicketSplitter() {
         {/* Header */}
         <header className="text-center mb-12">
           <h1 className="text-5xl font-bold tracking-tight text-primary mb-3">
-            TicketSplitter
+            Ticket Splitter
           </h1>
           <p className="text-xl text-muted-foreground">
-            Divide los gastos de tu ticket fácilmente.
+            Divide los gastos de tu ticket fácilmente
           </p>
         </header>
 
@@ -335,7 +335,7 @@ export default function TicketSplitter() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-2xl">
                           <Upload className="h-6 w-6 text-primary" />
-                          Subir Ticket
+                          Subir ticket o factura
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
                           Selecciona o arrastra una imagen de tu ticket.
@@ -343,7 +343,7 @@ export default function TicketSplitter() {
                       </CardHeader>
                       <CardContent className="space-y-6 pt-4">
                         <div className="space-y-2">
-                          <Label htmlFor="receipt-image" className="text-sm font-medium">Imagen del Ticket</Label>
+                          <Label htmlFor="receipt-image" className="text-sm font-medium">Imagen del ticket</Label>
                           <div 
                             className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}
@@ -439,7 +439,7 @@ export default function TicketSplitter() {
                             </>
                           ) : (
                             <>
-                              <Upload className="h-5 w-5 mr-2" /> Subir y Procesar
+                              <Upload className="h-5 w-5 mr-2" /> Subir y procesar
                             </>
                           )}
                         </Button>
@@ -455,7 +455,7 @@ export default function TicketSplitter() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-2xl">
                           <Receipt className="h-6 w-6 text-primary" />
-                          Artículos del Ticket
+                          Artículos del ticket
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
                           Ticket ID: <Badge variant="outline" className="font-mono text-xs">{parsedReceipt.receipt_id}</Badge>
@@ -498,7 +498,7 @@ export default function TicketSplitter() {
                         </div>
                         <div className="mt-8 flex justify-end">
                           <Button onClick={() => setCurrentStep(3)} className="text-base py-3 px-6 transition-transform transform hover:scale-105">
-                            Continuar a Asignación
+                            Continuar a asignación
                           </Button>
                         </div>
                       </CardContent>
@@ -510,7 +510,7 @@ export default function TicketSplitter() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-2xl">
                           <Users className="h-6 w-6 text-primary" />
-                          Asignar Artículos
+                          Asignar artículos
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
                           Añade personas y luego asigna quién ha consumido cada artículo. Los artículos se dividirán automáticamente entre los participantes.
@@ -602,7 +602,7 @@ Añadir
                             <CardHeader className="pb-3">
                               <CardTitle className="text-lg flex items-center gap-2">
                                 <Calculator className="h-5 w-5" />
-                                Resumen de Asignaciones
+                                Resumen de asignaciones
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
@@ -654,7 +654,7 @@ Añadir
                               </>
                             ) : (
                               <>
-                                <Calculator className="h-5 w-5 mr-2" /> Calcular División
+                                <Calculator className="h-5 w-5 mr-2" /> Calcular división
                               </>
                             )}
                           </Button>
@@ -668,7 +668,7 @@ Añadir
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-2xl">
                           <CheckCircle2 className="h-6 w-6 text-green-500" />
-                          Resultados de la División
+                          Resultados de la división
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
                           ¡Listo! Aquí está cuánto debe pagar cada persona.
@@ -679,8 +679,8 @@ Añadir
                           <TableHeader>
                             <TableRow>
                               <TableHead>Persona</TableHead>
-                              <TableHead>Artículos Asignados</TableHead>
-                              <TableHead className="text-right">Total a Pagar</TableHead>
+                              <TableHead>Artículos asignados</TableHead>
+                              <TableHead className="text-right">Total a pagar</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -732,14 +732,14 @@ Añadir
                           </TableBody>
                         </Table>
                         <div className="mt-8 pt-6 border-t border text-right">
-                          <p className="text-muted-foreground">Total Calculado:</p>
+                          <p className="text-muted-foreground">Total calculado:</p>
                           <p className="text-2xl font-bold text-primary">
                             {formatCurrency(splitResult.total_calculated)}
                           </p>
                         </div>
                         <div className="mt-10 flex justify-center">
                           <Button onClick={resetApp} variant="outline" className="text-base py-3 px-8 transition-transform transform hover:scale-105">
-                            <RotateCcw className="h-4 w-4 mr-2" /> Procesar Otro Ticket
+                            <RotateCcw className="h-4 w-4 mr-2" /> Procesar otro ticket
                           </Button>
                         </div>
                       </CardContent>
@@ -758,7 +758,7 @@ Añadir
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl text-orange-600">
                   <AlertCircle className="h-6 w-6" />
-                  Artículos Sin Asignar
+                  Artículos sin asignar
                 </CardTitle>
                 <CardDescription>
                   Los siguientes artículos no han sido asignados a ninguna persona:
