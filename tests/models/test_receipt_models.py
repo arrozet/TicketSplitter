@@ -23,7 +23,7 @@ def test_Item_validData_createsItem():
     }
     
     # Act
-    item = Item(**item_data)
+    item = Item(**item_data) # ** es para desempaquetar el diccionario. Esto sirve para que Pydantic (que sirve para validar los datos) pueda crear el objeto
     
     # Assert
     assert item.id == 1
