@@ -3,8 +3,16 @@ from pydantic import ValidationError
 from app.models.receipt import ReceiptParseResponse, Item, ItemAssignment, UserShare, ReceiptSplitResponse
 from datetime import datetime
 
-def test_item_creation_valid():
-    """Prueba la creación de un Item con datos válidos"""
+"""
+Módulo de pruebas para los modelos de recibo.
+Prueba la creación y validación de modelos Pydantic utilizados en la aplicación.
+"""
+
+def test_Item_validData_createsItem():
+    """
+    Prueba la creación exitosa de un Item con datos válidos.
+    Verifica que todos los campos se asignen correctamente.
+    """
     # Arrange
     item_data = {
         "id": 1,
@@ -25,8 +33,11 @@ def test_item_creation_valid():
     assert item.total_price == 2.50
 
 
-def test_receipt_parse_response_creation_valid():
-    """Prueba la creación de un ReceiptParseResponse con datos válidos"""
+def test_ReceiptParseResponse_validData_createsResponse():
+    """
+    Prueba la creación exitosa de un ReceiptParseResponse con datos válidos.
+    Verifica que el modelo se cree con todos los campos correctos incluyendo valores por defecto.
+    """
     # Arrange
     items = [
         Item(id=0, name="Café", quantity=1, price=2.50, total_price=2.50),
@@ -55,37 +66,56 @@ def test_receipt_parse_response_creation_valid():
     assert receipt.error_message is None
 
 
-def test_item_assignment_creation_valid():
-    """Prueba la creación de un ItemAssignment válido"""
-    # Arrange & Act
+def test_ItemAssignment_validData_createsAssignment():
+    """
+    Prueba la creación exitosa de un ItemAssignment con datos válidos.
+    Verifica que se puede asignar una cantidad específica a un item.
+    """
+    # Arrange
+    item_id = 0
+    quantity = 2.5
+    
+    # Act
     assignment = ItemAssignment(
-        item_id=0,
-        quantity=2.5
+        item_id=item_id,
+        quantity=quantity
     )
     
     # Assert
     assert assignment.item_id == 0
     assert assignment.quantity == 2.5
 
-def test_item_assignment_creation_invalid():
-    """Prueba la creación de un ItemAssignment inválido"""
-    # Arrange & Act & Assert
+def test_ItemAssignment_negativeQuantity_raisesValidationError():
+    """
+    Prueba que ItemAssignment rechaza cantidades negativas.
+    Verifica que Pydantic valida correctamente el campo quantity.
+    """
+    # Arrange
+    item_id = 0
+    negative_quantity = -1
+    
+    # Act & Assert
     with pytest.raises(ValidationError):
         ItemAssignment(
-            item_id=0,
-            quantity=-1  # Cantidad negativa
+            item_id=item_id,
+            quantity=negative_quantity
         )
 
-def test_user_share_creation_valid():
-    """Prueba la creación de un UserShare válido"""
+def test_UserShare_validData_createsShare():
+    """
+    Prueba la creación exitosa de un UserShare con datos válidos.
+    Verifica que se puede crear una participación de usuario con items asignados y compartidos.
+    """
     # Arrange
+    user_id = "Juan"
+    amount_due = 5.50
     items = [Item(id=0, name="Café", quantity=1, price=2.50, total_price=2.50)]
     shared_items = [Item(id=1, name="Tostada", quantity=1, price=3.00, total_price=3.00)]
     
     # Act
     share = UserShare(
-        user_id="Juan",
-        amount_due=5.50,
+        user_id=user_id,
+        amount_due=amount_due,
         items=items,
         shared_items=shared_items
     )
@@ -96,9 +126,13 @@ def test_user_share_creation_valid():
     assert len(share.items) == 1
     assert len(share.shared_items) == 1
 
-def test_receipt_split_response_creation_valid():
-    """Prueba la creación de un ReceiptSplitResponse válido"""
+def test_ReceiptSplitResponse_validData_createsResponse():
+    """
+    Prueba la creación exitosa de un ReceiptSplitResponse con datos válidos.
+    Verifica que se puede crear una respuesta de división con múltiples participaciones.
+    """
     # Arrange
+    total_calculated = 5.50
     items = [Item(id=0, name="Café", quantity=1, price=2.50, total_price=2.50)]
     shared_items = [Item(id=1, name="Tostada", quantity=1, price=3.00, total_price=3.00)]
     
@@ -113,7 +147,7 @@ def test_receipt_split_response_creation_valid():
     
     # Act
     response = ReceiptSplitResponse(
-        total_calculated=5.50,
+        total_calculated=total_calculated,
         shares=shares
     )
     
