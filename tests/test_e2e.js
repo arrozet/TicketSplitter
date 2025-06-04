@@ -41,8 +41,8 @@ async function readOpenedFileContent(fileHandle) {
 }
 
 // Abrir el archivo en el contexto de inicialización.
-// Usamos una ruta absoluta para asegurar que k6 pueda encontrarlo.
-const restauranteFilePath = 'D:/UMA/UMA_CODE/3/2cuatri/MPS/TicketSplitter/tests/images/restaurante.jpg';
+// Usamos una ruta relativa desde la raíz del proyecto
+const restauranteFilePath = 'images/restaurante.jpg';
 let restauranteFilePromise = null;
 
 console.log("SCRIPT_LOG: Configurando la promesa para abrir el archivo en el contexto de inicialización...");
