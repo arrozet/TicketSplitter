@@ -4,18 +4,66 @@ import { sleep } from 'k6';
 import { open } from 'k6/experimental/fs';
 import encoding from 'k6/encoding';
 
-// Función para leer el contenido completo de un archivo en un ArrayBuffer
-async function readAll(filePath) {
-  const file = await open(filePath, 'r'); // Abre el archivo en modo lectura
-  const fileInfo = await file.stat();
-  const buffer = new Uint8Array(fileInfo.size);
-  const bytesRead = await file.read(buffer);
-  if (bytesRead !== fileInfo.size) {
-    throw new Error(`Error al leer el archivo ${filePath}: se leyeron ${bytesRead} bytes de ${fileInfo.size}`);
+console.log("SCRIPT_LOG: Contexto de inicialización comenzando.");
+
+// Función para leer el contenido de un archivo ya abierto y luego cerrarlo
+async function readOpenedFileContent(fileHandle) {
+  if (!fileHandle) {
+    console.error("SCRIPT_LOG_ERROR: readOpenedFileContent fue llamado con un fileHandle nulo.");
+    throw new Error("El manejador de archivo es nulo. El archivo no se pudo abrir en el contexto de inicialización.");
   }
-  // file.close(); // Comentado temporalmente, k6 podría manejar el cierre automáticamente o necesitarlo en otro lugar.
-                 // Si hay fugas de descriptores de archivo, se puede descomentar.
-  return buffer.buffer; // Devuelve el ArrayBuffer subyacente
+  try {
+    console.log("SCRIPT_LOG: Leyendo estadísticas del archivo...");
+    const fileInfo = await fileHandle.stat();
+    console.log(`SCRIPT_LOG: Estadísticas obtenidas: tamaño ${fileInfo.size}`);
+    const buffer = new Uint8Array(fileInfo.size);
+    console.log("SCRIPT_LOG: Leyendo contenido del archivo...");
+    const bytesRead = await fileHandle.read(buffer);
+    console.log(`SCRIPT_LOG: Bytes leídos: ${bytesRead}`);
+    if (bytesRead !== fileInfo.size) {
+      throw new Error(`Error al leer el archivo: se leyeron ${bytesRead} bytes de ${fileInfo.size}`);
+    }
+    return buffer.buffer; // Devuelve el ArrayBuffer subyacente
+  } catch (e) {
+    console.error(`SCRIPT_LOG_ERROR: Error en readOpenedFileContent: ${e.name} - ${e.message}`);
+    throw e; // Relanzar el error para que sea visible
+  } finally {
+    if (fileHandle && typeof fileHandle.close === 'function') {
+      try {
+        console.log("SCRIPT_LOG: Intentando cerrar el archivo...");
+        await fileHandle.close(); // Cerrar el archivo después de leerlo o en caso de error previo
+        console.log("SCRIPT_LOG: Archivo cerrado exitosamente.");
+      } catch (closeError) {
+        console.error(`SCRIPT_LOG_ERROR: Error al cerrar el archivo: ${closeError.name} - ${closeError.message}`);
+      }
+    }
+  }
+}
+
+// Abrir el archivo en el contexto de inicialización.
+// Usamos una ruta absoluta para asegurar que k6 pueda encontrarlo.
+const restauranteFilePath = 'D:/UMA/UMA_CODE/3/2cuatri/MPS/TicketSplitter/tests/images/restaurante.jpg';
+let restauranteFilePromise = null;
+
+console.log("SCRIPT_LOG: Configurando la promesa para abrir el archivo en el contexto de inicialización...");
+try {
+  restauranteFilePromise = (async () => {
+    console.log(`SCRIPT_LOG: IIAFE iniciada para ${restauranteFilePath}.`);
+    try {
+      console.log(`SCRIPT_LOG: Intentando llamar a open() para ${restauranteFilePath}`);
+      const file = await open(restauranteFilePath, 'r');
+      console.log(`SCRIPT_LOG: open() exitoso para ${restauranteFilePath}. File object: ${typeof file}`);
+      return file;
+    } catch (e) {
+      console.error(`SCRIPT_LOG_ERROR: IIAFE catch: Error en open() para ${restauranteFilePath}. Tipo: ${e.name}, Msg: ${e.message}`);
+      console.error(`SCRIPT_LOG_ERROR_STACK: ${e.stack || 'No stack available'}`);
+      return null;
+    }
+  })();
+  console.log("SCRIPT_LOG: Promesa para open() configurada exitosamente.");
+} catch (syncError) {
+  console.error(`SCRIPT_LOG_ERROR: Error síncrono durante la configuración de la IIAFE: ${syncError.name} - ${syncError.message}`);
+  restauranteFilePromise = Promise.resolve(null);
 }
 
 // Configuración de opciones
@@ -71,11 +119,17 @@ export default async function () {
 
         // Establecer el valor del input directamente usando setInputFiles
         console.log('Estableciendo el valor del input con setInputFiles para restaurante.jpg...');
-        const restaurantePath = 'D:/UMA/UMA_CODE/3/2cuatri/MPS/TicketSplitter/tests/images/restaurante.jpg';
-        const restauranteBuffer = await readAll(restaurantePath);
+        
+        const restauranteFile = await restauranteFilePromise; // Esperar a que la promesa del archivo se resuelva
+        if (!restauranteFile) {
+            throw new Error(`No se pudo obtener el manejador para el archivo ${restauranteFilePath}. Revisa los logs del init context.`);
+        }
+
+        const restauranteBuffer = await readOpenedFileContent(restauranteFile);
+        
         await fileInput.setInputFiles({
             name: 'restaurante.jpg',
-            mimeType: 'image/jpeg',
+            mimetype: 'image/jpeg',
             buffer: encoding.b64encode(restauranteBuffer),
         });
         
