@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 # Retirado Optional de typing ya que no se usa directamente.
 
 class ItemBase(BaseModel):
@@ -16,7 +16,5 @@ class Item(ItemBase):
     id: int # Identificador único del ítem dentro de un ticket procesado.
     total_price: float # Precio total para este ítem (quantity * price).
 
-    class Config:
-        # Deprecation warning: `orm_mode` es obsoleto, se usa `from_attributes` en Pydantic V2.
-        # Permite que el modelo Pydantic se cree a partir de atributos de un objeto (ej. un ORM).
-        from_attributes = True 
+    # Configuración actualizada a Pydantic V2
+    model_config = ConfigDict(from_attributes=True) 
