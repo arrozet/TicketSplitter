@@ -8,7 +8,7 @@ from app.models.item import Item
 class TestParserService:
     """
     Pruebas unitarias para ParserService usando patrón AAA.
-    Formato de nombres: metodo_prueba_resultado
+    Formato de nombres: method_test_result
     """
 
     @pytest.fixture
@@ -16,9 +16,9 @@ class TestParserService:
         """Fixture para obtener una instancia del ParserService"""
         return ParserService()
 
-    # ============== PRUEBAS PARA parseTextToItems ==============
+    # ============== TESTS FOR parseTextToItems ==============
 
-    def test_parseTextToItems_jsonValido_devuelveDatosCorrectos(self, parserService):
+    def test_parseTextToItems_validJson_returnsCorrectData(self, parserService):
         """Prueba que parseTextToItems con JSON válido devuelve los datos correctos"""
         # Arrange
         json_valido = json.dumps({
@@ -50,7 +50,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_jsonMalformado_devuelveDatosVacios(self, parserService):
+    def test_parseTextToItems_malformedJson_returnsEmptyData(self, parserService):
         """Prueba que parseTextToItems con JSON malformado devuelve datos vacíos"""
         # Arrange
         json_malformado = '{"items": [{"description": "Café", "quantity": 1'  # JSON incompleto
@@ -68,7 +68,7 @@ class TestParserService:
         if resultado["error_message"] is not None:
             assert "Error al parsear JSON" in resultado["error_message"]
 
-    def test_parseTextToItems_sinTotales_calculaTotalAutomaticamente(self, parserService):
+    def test_parseTextToItems_noTotals_calculatesTotalAutomatically(self, parserService):
         """Prueba que parseTextToItems sin totales calcula el total automáticamente"""
         # Arrange
         json_sin_totales = json.dumps({
@@ -89,7 +89,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_conSubtotalYTax_calculaTotal(self, parserService):
+    def test_parseTextToItems_withSubtotalAndTax_calculatesTotal(self, parserService):
         """Prueba que parseTextToItems con subtotal y tax calcula el total"""
         # Arrange
         json_con_subtotal_tax = json.dumps({
@@ -111,7 +111,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_conTotalYTax_calculaSubtotal(self, parserService):
+    def test_parseTextToItems_withTotalAndTax_calculatesSubtotal(self, parserService):
         """Prueba que parseTextToItems con total y tax calcula el subtotal"""
         # Arrange
         json_con_total_tax = json.dumps({
@@ -133,7 +133,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_itemsSinDescripcion_sonIgnorados(self, parserService):
+    def test_parseTextToItems_itemsWithoutDescription_areIgnored(self, parserService):
         """Prueba que parseTextToItems ignora items sin descripción"""
         # Arrange
         json_con_item_sin_descripcion = json.dumps({
@@ -152,7 +152,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_itemsSinPrecio_sonIgnorados(self, parserService):
+    def test_parseTextToItems_itemsWithoutPrice_areIgnored(self, parserService):
         """Prueba que parseTextToItems ignora items sin precio unitario"""
         # Arrange
         json_con_item_sin_precio = json.dumps({
@@ -171,7 +171,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_precioCero_esValido(self, parserService):
+    def test_parseTextToItems_zeroPrice_isValid(self, parserService):
         """Prueba que parseTextToItems acepta items con precio cero"""
         # Arrange
         json_con_precio_cero = json.dumps({
@@ -192,7 +192,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_jsonVacio_devuelveEstructuraVacia(self, parserService):
+    def test_parseTextToItems_emptyJson_returnsEmptyStructure(self, parserService):
         """Prueba que parseTextToItems con JSON vacío devuelve estructura vacía esperada"""
         # Arrange
         json_vacio = json.dumps({})
@@ -209,7 +209,7 @@ class TestParserService:
         if resultado["error_message"] is not None:
             assert "No se encontraron items" in resultado["error_message"]
 
-    def test_parseTextToItems_valoresNull_manejadosCorrectamente(self, parserService):
+    def test_parseTextToItems_nullValues_handledCorrectly(self, parserService):
         """Prueba que parseTextToItems maneja valores null en JSON para precios y cantidades"""
         # Arrange
         json_con_nulls = json.dumps({
@@ -233,7 +233,7 @@ class TestParserService:
         assert resultado["is_ticket"] is True
         assert resultado["error_message"] is None
 
-    def test_parseTextToItems_variosIds_asignaIdsSecuenciales(self, parserService):
+    def test_parseTextToItems_multipleIds_assignsSequentialIds(self, parserService):
         """Prueba que parseTextToItems asigna IDs secuenciales a los items"""
         # Arrange
         json_con_multiples_items = json.dumps({
@@ -252,7 +252,7 @@ class TestParserService:
         assert resultado["items"][1].id == 2
         assert resultado["items"][2].id == 3
 
-    def test_parseTextToItems_multiplesLlamadas_reiniciaIds(self, parserService):
+    def test_parseTextToItems_multipleCalls_resetsIds(self, parserService):
         """Prueba que los IDs de los items se reinician en múltiples llamadas a parseTextToItems"""
         # Arrange
         json_items_1 = json.dumps({"items": [{"description": "A", "quantity": 1, "unit_price": 1}]})
