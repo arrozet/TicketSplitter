@@ -1,4 +1,4 @@
-# TicketSplitter - An app to split the bills with your close ones
+# Ticket Splitter
 
 <p align="center">
   <img src="docs/images/1-upload.png" alt="TicketSplitter Upload Interface" width="600">
