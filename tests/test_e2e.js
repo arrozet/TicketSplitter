@@ -41,7 +41,7 @@ async function readOpenedFileContent(fileHandle) {
 }
 
 // Abrir el archivo en el contexto de inicialización.
-// Usamos una ruta relativa desde la raíz del proyecto
+// La ruta es relativa al directorio del script (tests/)
 const restauranteFilePath = 'images/restaurante.jpg';
 let restauranteFilePromise = null;
 
@@ -179,28 +179,51 @@ export default async function () {
 
         // --- VERIFICACIONES DEL PASO 2 (MOVIDAS AQUÍ) ---
         console.log('Realizando verificaciones del Paso 2: Revisión de artículos...');
+
+        // Esperar a que el contenido del Paso 2 indique que los artículos están cargados
+        console.log('Esperando a que los artículos procesados aparezcan en el texto de la página (Paso 2)...');
+        try {
+            await page.waitForFunction(() => {
+                const bodyText = document.body.textContent || "";
+                // Comprobar la presencia de algunos nombres de artículos esperados (insensible a mayúsculas/minúsculas)
+                const normalizedBodyText = bodyText.toUpperCase();
+                return normalizedBodyText.includes('AGUA LITRO') && normalizedBodyText.includes('PAN'); 
+            }, {}, { timeout: 20000 }); // Timeout de 20 segundos
+            console.log('Artículos esperados encontrados en el texto de la página. El Paso 2 debería estar listo.');
+        } catch (e) {
+            console.error(`CRITICAL: Timeout esperando que aparezcan los artículos en el texto de la página (Paso 2).`);
+            await page.screenshot({ path: 'debug_timeout_paso2_text_content.png' });
+            const currentHTML = await page.content();
+            console.log("DEBUG: HTML de la página en el momento del timeout (primeros 2KB): \n" + currentHTML.substring(0, 2000));
+            throw e; // Relanzar el error para detener el test
+        }
+        
         const bodyPaso2 = await page.locator('body');
         const contenidoPaso2 = await bodyPaso2.textContent();
 
+        // DEBUG: Imprimir el contenido del Paso 2
+        console.log('DEBUG: Contenido del Paso 2 para verificación:\n---BEGIN DEBUG CONTENT---\n', contenidoPaso2, '\n---END DEBUG CONTENT---');
+
         await check(bodyPaso2, {
-            'P2: ticket restaurante procesado': () => { // Check síncrono ya que contenidoPaso2 ya está resuelto
-                const expectedItems = ['AGUA LITRO', 'PAN', 'MARISCADA 2 PAX', 'PULPO A LA GALLEGA']; // Actualizado con los nuevos artículos
-                const missingItems = expectedItems.filter(item => !contenidoPaso2.includes(item));
+            'P2: ticket restaurante procesado': () => {
+                const expectedItems = ['AGUA LITRO', 'PAN', 'MARISCADA 2 PAX', 'PULPO A LA GALLEGA'];
+                const contenidoNormalizado = contenidoPaso2.toUpperCase();
+                const missingItems = expectedItems.filter(item => !contenidoNormalizado.includes(item.toUpperCase()));
                 if (missingItems.length > 0) {
-                    console.error(`P2 CHECK FAIL: Faltan los siguientes artículos del ticket original: ${missingItems.join(', ')}`);
+                    console.error(`P2 CHECK FAIL: Faltan los siguientes artículos del ticket original (comparación insensible a mayúsculas): ${missingItems.join(', ')}`);
                 }
                 return missingItems.length === 0;
             }
         });
 
         await check(bodyPaso2, {
-            'P2: totales correctos restaurante': () => { // Check síncrono
-                // TODO: Actualizar estos totales con los valores correctos del ticket actual
-                // const expectedTotals = ['SUBTOTAL_CORRECTO', 'IMPUESTOS_CORRECTOS', 'TOTAL_CORRECTO']; 
-                const expectedTotals = ['2.50', '1.80', '22.00']; // Usando precios unitarios como placeholder, SE NECESITA ACTUALIZAR
-                const missingTotals = expectedTotals.filter(item => !contenidoPaso2.includes(item));
+            'P2: totales correctos restaurante': () => {
+                const expectedTotals = ['2.50', '1.80', '22.00']; // Estos parecen precios, revisar si son totales
+                const contenidoNormalizado = contenidoPaso2.toUpperCase();
+                // Para los totales, que son strings de números, toUpperCase no debería afectar pero lo mantenemos por consistencia
+                const missingTotals = expectedTotals.filter(item => !contenidoNormalizado.includes(item.toUpperCase()));
                 if (missingTotals.length > 0) {
-                    console.error(`P2 CHECK FAIL: Faltan los siguientes totales del ticket original: ${missingTotals.join(', ')}`);
+                    console.error(`P2 CHECK FAIL: Faltan los siguientes totales/precios del ticket original (comparación insensible a mayúsculas): ${missingTotals.join(', ')}`);
                 }
                 return missingTotals.length === 0;
             }
