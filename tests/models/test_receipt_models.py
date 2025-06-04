@@ -33,39 +33,6 @@ def test_Item_validData_createsItem():
     assert item.total_price == 2.50
 
 
-def test_ReceiptParseResponse_validData_createsResponse():
-    """
-    Prueba la creación exitosa de un ReceiptParseResponse con datos válidos.
-    Verifica que el modelo se cree con todos los campos correctos incluyendo valores por defecto.
-    """
-    # Arrange
-    items = [
-        Item(id=0, name="Café", quantity=1, price=2.50, total_price=2.50),
-        Item(id=1, name="Tostada", quantity=2, price=3.00, total_price=6.00)
-    ]
-    timestamp = datetime.now().isoformat()
-    
-    # Act
-    receipt = ReceiptParseResponse(
-        receipt_id="test-123",
-        items=items,
-        subtotal=8.50,
-        tax=0.85,
-        total=9.35,
-        upload_timestamp=timestamp,
-        is_ticket=True
-    )
-    
-    # Assert
-    assert receipt.receipt_id == "test-123"
-    assert len(receipt.items) == 2
-    assert receipt.subtotal == 8.50
-    assert receipt.tax == 0.85
-    assert receipt.total == 9.35
-    assert receipt.is_ticket is True
-    assert receipt.error_message is None
-
-
 def test_ItemAssignment_validData_createsAssignment():
     """
     Prueba la creación exitosa de un ItemAssignment con datos válidos.
@@ -100,6 +67,38 @@ def test_ItemAssignment_negativeQuantity_raisesValidationError():
             item_id=item_id,
             quantity=negative_quantity
         )
+
+def test_ReceiptParseResponse_validData_createsResponse():
+    """
+    Prueba la creación exitosa de un ReceiptParseResponse con datos válidos.
+    Verifica que el modelo se cree con todos los campos correctos incluyendo valores por defecto.
+    """
+    # Arrange
+    items = [
+        Item(id=0, name="Café", quantity=1, price=2.50, total_price=2.50),
+        Item(id=1, name="Tostada", quantity=2, price=3.00, total_price=6.00)
+    ]
+    timestamp = datetime.now().isoformat()
+    
+    # Act
+    receipt = ReceiptParseResponse(
+        receipt_id="test-123",
+        items=items,
+        subtotal=8.50,
+        tax=0.85,
+        total=9.35,
+        upload_timestamp=timestamp,
+        is_ticket=True
+    )
+    
+    # Assert
+    assert receipt.receipt_id == "test-123"
+    assert len(receipt.items) == 2
+    assert receipt.subtotal == 8.50
+    assert receipt.tax == 0.85
+    assert receipt.total == 9.35
+    assert receipt.is_ticket is True
+    assert receipt.error_message is None
 
 def test_UserShare_validData_createsShare():
     """
