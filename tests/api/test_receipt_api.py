@@ -58,7 +58,7 @@ def sample_receipt_json(sample_receipt_data):
 
 def test_upload_receipt_success(mock_ocr_service):
     test_image = b"fake image content"
-    response = client.post(
+    response = client.post( # mockeado por el primer fixture
         "/api/v1/receipts/upload",
         files={"file": ("test.jpg", test_image, "image/jpeg")}
     )
@@ -74,13 +74,13 @@ def test_upload_receipt_success(mock_ocr_service):
 
 def test_upload_receipt_no_file():
     response = client.post("/api/v1/receipts/upload")
-    assert response.status_code == 422
+    assert response.status_code == 422 # comportamiento estandar de fastapi
 
 def test_upload_receipt_invalid_file_type():
     test_file = b"fake content"
     response = client.post(
         "/api/v1/receipts/upload",
-        files={"file": ("test.txt", test_file, "text/plain")}
+        files={"file": ("test.txt", test_file, "text/plain")}   # en endpoint se valida que el archivo subido sea una imagen
     )
     assert response.status_code == 400
     assert "El archivo subido debe ser una imagen" in response.json()["detail"]
@@ -136,4 +136,26 @@ def test_split_receipt_invalid_assignments(mock_ocr_service):
         }
     )
     assert response.status_code == 400
-    assert "Item no encontrado" in response.json()["detail"] 
+    assert "Item no encontrado" in response.json()["detail"]
+
+def test_get_receipt_success(mock_ocr_service):
+    # Primero subimos un recibo
+    test_image = b"fake image content"
+    upload_response = client.post(
+        "/api/v1/receipts/upload",
+        files={"file": ("test.jpg", test_image, "image/jpeg")}
+    )
+    receipt_id = upload_response.json()["receipt_id"]
+    
+    # Luego intentamos obtenerlo
+    response = client.get(f"/api/v1/receipts/{receipt_id}")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["receipt_id"] == receipt_id
+    assert len(response_data["items"]) == 2
+    assert response_data["subtotal"] == 8.50
+
+def test_get_receipt_not_found():
+    response = client.get("/api/v1/receipts/non-existent-id")
+    assert response.status_code == 404
+    assert "Ticket no encontrado" in response.json()["detail"] 

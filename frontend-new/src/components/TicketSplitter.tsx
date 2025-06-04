@@ -829,7 +829,7 @@ Añadir
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded-md p-3">
                   <p className="text-sm text-green-800">
-                    <span className="font-medium">💡 Consejo:</span> Sube una foto clara de un ticket de compra, factura o recibo que contenga:
+                    <span className="font-medium">💡 Consejo —</span> Sube una foto clara de un ticket de compra, factura o recibo que contenga:
                   </p>
                   <ul className="list-disc list-inside text-xs text-green-700 mt-2 space-y-1">
                     <li>Lista de artículos con precios</li>
