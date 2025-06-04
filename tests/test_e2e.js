@@ -133,35 +133,49 @@ export default async function () {
             buffer: encoding.b64encode(restauranteBuffer),
         });
         
-        console.log('Archivo seleccionado. Esperando 2 segundos...');
-        sleep(2);
+        console.log('Archivo seleccionado. Esperando 5 segundos para que la UI procese la imagen...');
+        sleep(5); // Pausa generosa para que la UI se actualice después de la subida de la imagen
 
-        // Buscar y comprobar el botón "Subir y procesar"
-        const procesarBtns = await page.$$('button');
-        let subirBtn = null;
-        for (const btn of procesarBtns) {
-            const text = await btn.textContent();
+        // Buscar el botón "Subir y procesar"
+        console.log('Buscando el botón "Subir y procesar"...');
+        const allButtons = await page.$$('button');
+        let subirBtnHandle = null;
+        for (const btnHandle of allButtons) {
+            const text = await btnHandle.textContent();
             if (text && text.includes('Subir y procesar')) {
-                subirBtn = btn;
+                subirBtnHandle = btnHandle;
                 break;
             }
         }
-        if (!subirBtn) {
-            console.log('No se encontró el botón Subir y procesar');
-            throw new Error('No se encontró el botón Subir y procesar');
-        }
-        const btnDisabled = await subirBtn.evaluate(btn => btn.disabled);
-        console.log('Botón Subir y procesar encontrado. ¿Está deshabilitado?:', btnDisabled);
-        sleep(2);
 
-        // Hacer clic en el botón si está habilitado
-        if (!btnDisabled) {
-            await subirBtn.click();
-            console.log('Botón Subir y procesar clicado.');
-        } else {
-            console.log('El botón Subir y procesar está deshabilitado. No se puede clicar.');
+        if (!subirBtnHandle) { 
+            console.error('CRITICAL: No se encontró el botón "Subir y procesar" tras iterar todos los botones.');
+            await page.screenshot({ path: 'debug_no_subir_btn.png' });
+            throw new Error('No se encontró el botón "Subir y procesar"');
         }
-        sleep(3);
+        
+        console.log('Botón "Subir y procesar" encontrado. Intentando hacer clic...');
+        try {
+            await subirBtnHandle.click({ force: true, timeout: 10000 }); 
+            console.log('Botón "Subir y procesar" clicado exitosamente (con force=true).');
+        } catch (clickError) {
+            console.warn(`Primer intento de clic (con force=true) falló: ${clickError.message}. Reintentando tras una breve pausa...`);
+            await page.screenshot({ path: 'debug_primer_clic_forzado_fallido.png' });
+            sleep(2); 
+            try {
+                await subirBtnHandle.scrollIntoViewIfNeeded(); 
+                await subirBtnHandle.click({ force: true, timeout: 10000 });
+                console.log('Botón "Subir y procesar" clicado exitosamente en el segundo intento (con force=true).');
+            } catch (secondClickError) {
+                console.error(`ERROR CRÍTICO al hacer clic en el botón "Subir y procesar" en el segundo intento (con force=true): ${secondClickError.message}`);
+                console.error(`Stack del error de clic (segundo intento, forzado): ${secondClickError.stack || 'No stack available'}`);
+                await page.screenshot({ path: 'debug_segundo_clic_forzado_fallido.png' });
+                throw secondClickError; 
+            }
+        }
+        
+        console.log('Esperando 3 segundos después del clic para la carga del siguiente estado...');
+        sleep(3); 
 
         // Verificar que el ticket se procesó correctamente
         await check(page.locator('body'), {
