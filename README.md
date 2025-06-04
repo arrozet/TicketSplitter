@@ -1,4 +1,4 @@
-# TicketSplitter API
+# TicketSplitter - An app to split the bills with your close ones
 
 A powerful and intuitive application designed to simplify the process of splitting bills and receipts among groups. Whether you're dining out with friends, sharing household expenses, or managing group purchases, TicketSplitter makes it effortless to divide costs fairly and accurately.
 
@@ -133,13 +133,13 @@ k6 run tests/test_e2e.js
 
 ## New UI Features
 
-✨ **Modern and responsive interface** with shadcn/ui
-🎨 **Elegant design** with gradients and animations
-📱 **Fully responsive** for mobile and tablets
-🔄 **Visual progress indicator** by steps
-⚡ **Reusable and well-structured components**
-🌙 **Dark mode support**
-🎯 **Improved UX** with better visual feedback
+- ✨ **Modern and responsive interface** with shadcn/ui
+- 🎨 **Elegant design** with gradients and animations
+- 📱 **Fully responsive** for mobile and tablets
+- 🔄 **Visual progress indicator** by steps
+- ⚡ **Reusable and well-structured components**
+- 🌙 **Dark mode support**
+- 🎯 **Improved UX** with better visual feedback
 
 ## Project Structure
 
