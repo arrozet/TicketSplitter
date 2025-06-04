@@ -1,5 +1,9 @@
 # TicketSplitter - An app to split the bills with your close ones
 
+<p align="center">
+  <img src="docs/images/1-upload.png" alt="TicketSplitter Upload Interface" width="600">
+</p>
+
 A powerful and intuitive application designed to simplify the process of splitting bills and receipts among groups. Whether you're dining out with friends, sharing household expenses, or managing group purchases, TicketSplitter makes it effortless to divide costs fairly and accurately.
 
 ## Core Features
