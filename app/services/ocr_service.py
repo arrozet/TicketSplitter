@@ -4,6 +4,8 @@ import io
 # import cv2 # Ya no es necesario para el preprocesamiento si Gemini lo maneja bien
 # import numpy as np # Ya no es necesario
 import os
+import json
+from typing import Optional, Dict, Any
 
 # ¡¡¡ADVERTENCIA DE SEGURIDAD!!!
 # Es MUY RECOMENDABLE cargar la API key desde una variable de entorno en producción.
@@ -11,58 +13,129 @@ import os
 # No la dejes hardcodeada así, especialmente si el código es compartido o público.
 
 class OCRService:
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: Optional[str] = None):
         """
         Inicializa el servicio OCR usando la API de Gemini.
+        
+        Args:
+            api_key: Clave API opcional. Si no se proporciona, se intentará obtener de GEMINI_API_KEY.
+        
+        Raises:
+            ValueError: Si no se puede encontrar una API key válida.
+            RuntimeError: Si hay un error al configurar la API de Gemini.
         """
-        # Intentar obtener la API key de la variable de entorno
-        retrieved_env_api_key = os.getenv("GEMINI_API_KEY")
-        print(f"DEBUG: Valor de GEMINI_API_KEY obtenido de os.getenv(): '{retrieved_env_api_key}'") # <-- LÍNEA DE PRUEBA
+        self._configure_api(api_key)
+        self._initialize_model()
 
+    def _configure_api(self, api_key: Optional[str]) -> None:
+        """Configura la API key de Gemini."""
+        retrieved_env_api_key = os.getenv("GEMINI_API_KEY")
         resolved_api_key = api_key or retrieved_env_api_key
         
         if not resolved_api_key:
-            print("ERROR: No se pudo resolver la API key de Gemini. Ni pasada como argumento ni encontrada en GEMINI_API_KEY.")
             raise ValueError("API key de Gemini no encontrada. Configúrala como variable de entorno GEMINI_API_KEY o pásala al constructor.")
         
         try:
             genai.configure(api_key=resolved_api_key)
-            # Usaremos gemini-pro-vision ya que necesitamos procesar imágenes
-            # self.model = genai.GenerativeModel('gemini-pro-vision') # Modelo deprecado
-            self.model = genai.GenerativeModel('gemini-1.5-flash-latest') # Modelo actualizado
-            print(f"DEBUG: Servicio OCR configurado con Gemini API y modelo 'gemini-1.5-flash-latest'.")
         except Exception as e:
-            print(f"Error al configurar Gemini API: {e}")
-            raise RuntimeError(f"No se pudo configurar Gemini API: {e}") from e
+            raise RuntimeError(f"Error al configurar Gemini API: {e}") from e
+
+    def _initialize_model(self) -> None:
+        """Inicializa el modelo de Gemini."""
+        try:
+            self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        except Exception as e:
+            raise RuntimeError(f"Error al inicializar el modelo de Gemini: {e}") from e
 
     def _preprocessImageForOcr(self, image_bytes: bytes) -> Image.Image:
         """
-        El preprocesamiento podría no ser tan necesario con Gemini, 
-        pero mantenemos la función por si se quiere añadir algo en el futuro.
-        Por ahora, solo convierte bytes a objeto PIL.Image.
+        Preprocesa la imagen para OCR.
+        
+        Args:
+            image_bytes: Bytes de la imagen a procesar.
+            
+        Returns:
+            Image.Image: Imagen procesada.
+            
+        Raises:
+            ValueError: Si los bytes de la imagen no son válidos.
         """
         try:
             image = Image.open(io.BytesIO(image_bytes))
-            # Podríamos convertir a RGB para asegurar compatibilidad si es necesario.
-            # if image.mode != 'RGB':
-            #     image = image.convert('RGB')
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
             return image
         except Exception as e:
-            print(f"Error al cargar la imagen para Gemini: {e}")
             raise ValueError(f"Los bytes de la imagen no son válidos: {e}") from e
+
+    def _clean_json_response(self, text: str) -> str:
+        """
+        Limpia la respuesta JSON del modelo.
+        
+        Args:
+            text: Texto a limpiar.
+            
+        Returns:
+            str: Texto limpio.
+        """
+        cleaned_text = text.strip()
+        
+        # Eliminar marcadores de código markdown si existen
+        if cleaned_text.startswith("```json"):
+            start_index = cleaned_text.find('{')
+            if start_index != -1:
+                cleaned_text = cleaned_text[start_index:]
+        
+        if cleaned_text.endswith("```"):
+            end_index = cleaned_text.rfind('}')
+            if end_index != -1:
+                cleaned_text = cleaned_text[:end_index + 1]
+        
+        return cleaned_text.strip()
 
     def extractTextFromImage(self, image_bytes: bytes, language: str = 'spa') -> str:
         """
         Extrae texto de una imagen usando la API de Gemini.
-        El parámetro 'language' es menos directo que con Tesseract, pero podemos guiar al modelo.
+        
+        Args:
+            image_bytes: Bytes de la imagen a procesar.
+            language: Idioma del ticket (por defecto 'spa' para español).
+            
+        Returns:
+            str: JSON con la información extraída del ticket.
+            
+        Raises:
+            ValueError: Si los bytes de la imagen no son válidos.
+            RuntimeError: Si hay un error al procesar la imagen.
         """
-        print(f"DEBUG: Iniciando extracción de texto con Gemini Vision para imagen de {len(image_bytes)} bytes.")
         try:
             pil_image = self._preprocessImageForOcr(image_bytes)
             
-            # El prompt puede ser ajustado para mejorar los resultados.
-            # Incluir el idioma en el prompt puede ayudar.
-            prompt = f"""
+            prompt = self._generate_prompt(language)
+            response = self.model.generate_content([prompt, pil_image])
+            
+            if not response.parts or not response.parts[0].text:
+                return ""
+            
+            extracted_text = response.parts[0].text
+            cleaned_text = self._clean_json_response(extracted_text)
+            
+            # Validar que el texto limpio es un JSON válido
+            try:
+                json.loads(cleaned_text)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"La respuesta del modelo no es un JSON válido: {e}")
+            
+            return cleaned_text
+            
+        except Exception as e:
+            if isinstance(e, (ValueError, RuntimeError)):
+                raise
+            raise RuntimeError(f"Error al procesar imagen con Gemini: {e}") from e
+
+    def _generate_prompt(self, language: str) -> str:
+        """Genera el prompt para el modelo."""
+        return f"""
 PRIMERO: Analiza cuidadosamente la imagen para determinar si es un ticket de compra, factura o recibo.
 
 Si la imagen NO es un ticket de compra/factura/recibo (por ejemplo: es una foto personal, paisaje, documento diferente, pantalla, texto general, etc.), devuelve ÚNICAMENTE este JSON:
@@ -95,46 +168,6 @@ INSTRUCCIONES IMPORTANTES:
 - No incluyas ningún texto explicativo adicional fuera del objeto JSON
 - Siempre incluye el campo "is_ticket" para indicar si la imagen es un ticket válido
 """
-            
-            # Preparar la entrada para el modelo (imagen + prompt)
-            # La API espera una lista de "partes"
-            response = self.model.generate_content([prompt, pil_image])
-            
-            # Asegurarse de que hay texto en la respuesta
-            if response.parts and response.parts[0].text:
-                extracted_text = response.parts[0].text
-                print(f"DEBUG: Texto bruto devuelto por Gemini: {extracted_text[:300]}...")
-
-                # Limpiar el texto si está envuelto en bloques de código markdown JSON
-                cleaned_text = extracted_text.strip()
-                if cleaned_text.startswith("```json") or cleaned_text.startswith("```jsoni") : # Considerar la errata
-                    # Encontrar el inicio del JSON real después del ```json\n
-                    start_index = cleaned_text.find('{')
-                    if start_index != -1:
-                        cleaned_text = cleaned_text[start_index:]
-                
-                # Buscar el final del JSON antes del ``` final
-                if cleaned_text.endswith("```"):
-                    end_index = cleaned_text.rfind('}')
-                    if end_index != -1:
-                        cleaned_text = cleaned_text[:end_index + 1]
-                
-                cleaned_text = cleaned_text.strip() # Una limpieza final por si acaso
-
-                print(f"DEBUG: Texto limpiado (esperando JSON): {cleaned_text[:300]}...")
-                return cleaned_text
-            else:
-                # Esto podría ocurrir si la imagen no tiene texto o Gemini no lo encuentra.
-                # O si la respuesta no es lo que esperamos (ej. bloqueada por seguridad).
-                # Revisar response.prompt_feedback puede dar más información.
-                feedback = response.prompt_feedback if hasattr(response, 'prompt_feedback') else "No feedback available"
-                print(f"ADVERTENCIA: Gemini no devolvió texto. Feedback: {feedback}")
-                return "" # Devolver string vacío si no se extrae texto
-
-        except Exception as e:
-            print(f"Error durante la extracción de texto con Gemini API: {e}")
-            # En producción, es mejor loggear esto detalladamente.
-            raise RuntimeError(f"Error al procesar imagen con Gemini: {e}") from e
 
 # Ejemplo de uso (no se ejecutará directamente aquí):
 # if __name__ == '__main__':
