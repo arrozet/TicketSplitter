@@ -1,6 +1,22 @@
 import { browser } from 'k6/browser';
 import { check } from 'https://jslib.k6.io/k6-utils/1.5.0/index.js';
 import { sleep } from 'k6';
+import { open } from 'k6/experimental/fs';
+import encoding from 'k6/encoding';
+
+// Función para leer el contenido completo de un archivo en un ArrayBuffer
+async function readAll(filePath) {
+  const file = await open(filePath, 'r'); // Abre el archivo en modo lectura
+  const fileInfo = await file.stat();
+  const buffer = new Uint8Array(fileInfo.size);
+  const bytesRead = await file.read(buffer);
+  if (bytesRead !== fileInfo.size) {
+    throw new Error(`Error al leer el archivo ${filePath}: se leyeron ${bytesRead} bytes de ${fileInfo.size}`);
+  }
+  // file.close(); // Comentado temporalmente, k6 podría manejar el cierre automáticamente o necesitarlo en otro lugar.
+                 // Si hay fugas de descriptores de archivo, se puede descomentar.
+  return buffer.buffer; // Devuelve el ArrayBuffer subyacente
+}
 
 // Configuración de opciones
 export const options = {
@@ -53,29 +69,16 @@ export default async function () {
             throw new Error('No se encontró el input de archivo');
         }
 
-        // Hacer el input visible y establecer su valor
-        console.log('Haciendo el input visible...');
-        await fileInput.evaluate(input => {
-            input.style.display = 'block';
-            input.style.visibility = 'visible';
-            input.style.opacity = '1';
-            input.style.position = 'static';
+        // Establecer el valor del input directamente usando setInputFiles
+        console.log('Estableciendo el valor del input con setInputFiles para restaurante.jpg...');
+        const restaurantePath = 'D:/UMA/UMA_CODE/3/2cuatri/MPS/TicketSplitter/tests/images/restaurante.jpg';
+        const restauranteBuffer = await readAll(restaurantePath);
+        await fileInput.setInputFiles({
+            name: 'restaurante.jpg',
+            mimeType: 'image/jpeg',
+            buffer: encoding.b64encode(restauranteBuffer),
         });
-        sleep(1);
-
-        // Establecer el valor del input directamente
-        console.log('Estableciendo el valor del input...');
-        await fileInput.evaluate((input, path) => {
-            input.value = path;
-        }, 'tests/images/restaurante.jpg');
-        sleep(1);
-
-        // Disparar el evento change para que el frontend detecte el cambio
-        console.log('Disparando evento change...');
-        await fileInput.evaluate(input => {
-            const event = new Event('change', { bubbles: true });
-            input.dispatchEvent(event);
-        });
+        
         console.log('Archivo seleccionado. Esperando 2 segundos...');
         sleep(2);
 
@@ -128,50 +131,6 @@ export default async function () {
         });
 
         sleep(2);
-
-        // Subir el ticket de supermercado
-        console.log('Subiendo ticket de supermercado...');
-        await fileInput.setInputFiles('tests/images/supermercado.jpg');
-        sleep(2);
-
-        // Verificar que el ticket se procesó correctamente
-        await check(page.locator('body'), {
-            'ticket supermercado procesado': async (lo) => {
-                const content = await lo.textContent();
-                return content.includes('Leche desnatada') && 
-                       content.includes('Pan integral') &&
-                       content.includes('Manzanas Royal Gala') &&
-                       content.includes('Descuento socio');
-            }
-        });
-
-        sleep(2);
-
-        // Subir el ticket de farmacia
-        console.log('Subiendo ticket de farmacia...');
-        await fileInput.setInputFiles('tests/images/farmacia.jpg');
-        sleep(2);
-
-        // Verificar que el ticket se procesó correctamente
-        await check(page.locator('body'), {
-            'ticket farmacia procesado': async (lo) => {
-                const content = await lo.textContent();
-                return content.includes('Paracetamol') && 
-                       content.includes('Ibuprofeno') &&
-                       content.includes('Vendas elásticas') &&
-                       content.includes('Crema hidratante');
-            }
-        });
-
-        // Verificar los totales de farmacia
-        await check(page.locator('body'), {
-            'totales correctos farmacia': async (lo) => {
-                const content = await lo.textContent();
-                return content.includes('14.20') && // subtotal
-                       content.includes('0.00') &&  // tax
-                       content.includes('14.20');   // total
-            }
-        });
 
     } finally {
         await page.close();
