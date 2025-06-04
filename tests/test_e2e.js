@@ -161,7 +161,7 @@ export default async function () {
         } catch (clickError) {
             console.warn(`Primer intento de clic (con force=true) falló: ${clickError.message}. Reintentando tras una breve pausa...`);
             await page.screenshot({ path: 'debug_primer_clic_forzado_fallido.png' });
-            sleep(2); 
+        sleep(2);
             try {
                 await subirBtnHandle.scrollIntoViewIfNeeded(); 
                 await subirBtnHandle.click({ force: true, timeout: 10000 });
@@ -175,7 +175,7 @@ export default async function () {
         }
         
         console.log('Esperando 3 segundos después del clic para la carga del siguiente estado...');
-        sleep(3); 
+        sleep(3);
 
         // Verificar que el ticket se procesó correctamente
         await check(page.locator('body'), {
@@ -296,19 +296,128 @@ export default async function () {
 
         console.log('Todas las personas especificadas han sido procesadas.');
         
-        // Aquí podrías añadir verificaciones para asegurar que las personas están en la lista
-        // Por ejemplo, buscar elementos que contengan "Cristian" y "Cbarba" en la UI.
-        // Ejemplo de verificación (descomentar y adaptar si es necesario):
-        // for (const persona of personasParaAnadir) {
-        //     const personaEnLista = await page.$(`*:has-text("${persona}")`);
-        //     if (!personaEnLista) {
-        //         await page.screenshot({ path: `debug_persona_no_en_lista_${persona}.png` });
-        //         throw new Error(`Error de verificación: ${persona} no fue encontrada en la lista de personas añadidas.`);
-        //     }
-        //     console.log(`${persona} encontrada en la lista de personas añadidas.`);
-        // }
+        // --- PASO 3b: Asignar artículos a las personas ---
+        console.log('Paso 3b: Asignando artículos...');
 
-        sleep(2); // Pausa final para observar si es necesario antes de cerrar.
+        const asignaciones = [
+            { itemNombre: 'AGUA LITRO', personas: ['Cristian', 'Cbarba'] },
+            { itemNombre: 'PAN', personas: ['Cbarba'] },
+            { itemNombre: 'MARISCADA', personas: ['Cbarba'] },
+            { itemNombre: 'PULPO A LA GALLEGA', personas: ['Cristian', 'Cbarba'] },
+            { itemNombre: 'COQUINAS', personas: ['Cristian'] },
+        ];
+
+        // Primero, obtener todos los contenedores de items (Card)
+        // Cada item está en un <Card> que contiene un <CardHeader> con un <CardTitle>
+        // Las Card de los ítems están dentro de un div.space-y-4 y tienen clases .overflow-hidden.shadow-sm
+        const todosItemCards = await page.$$('div.space-y-4 > div.overflow-hidden.shadow-sm'); 
+
+        console.log(`Encontrados ${todosItemCards.length} cards de items potenciales.`);
+
+        for (const asignacion of asignaciones) {
+            console.log(`Asignando "${asignacion.itemNombre}" a ${asignacion.personas.join(', ')}`);
+            let itemCardHandle = null;
+
+            for (const card of todosItemCards) {
+                // Dentro de la card, buscar el CardTitle por sus clases específicas
+                const titleHandle = await card.$('.text-lg.font-semibold'); 
+                if (titleHandle) {
+                    const tituloTexto = await titleHandle.textContent();
+                    const tituloNormalizado = tituloTexto ? tituloTexto.trim().toUpperCase() : '[TÍTULO NO ENCONTRADO O VACÍO]';
+                    const buscandoNormalizado = asignacion.itemNombre.toUpperCase();
+                    
+                    console.log(`  - Card detectada. Título leído: "${tituloTexto}" (Normalizado: "${tituloNormalizado}"). Buscando: "${buscandoNormalizado}"`);
+
+                    if (tituloNormalizado.includes(buscandoNormalizado)) {
+                        itemCardHandle = card;
+                        console.log(`    ✓ Card encontrada para "${asignacion.itemNombre}"`);
+                        break;
+                    }
+                }
+            }
+
+            if (!itemCardHandle) {
+                const errorMsg = `CRITICAL: No se encontró el card del artículo "${asignacion.itemNombre}".`;
+                console.error(errorMsg);
+                await page.screenshot({ path: `debug_no_item_card_${asignacion.itemNombre.replace(/\s+/g, '_')}.png` });
+                throw new Error(errorMsg);
+            }
+
+            // Dentro del card del item, buscar las etiquetas de asignación para las personas especificadas
+            const labelsEnItemCard = await itemCardHandle.$$('label');
+            for (const personaNombre of asignacion.personas) {
+                console.log(`Intentando asignar "${asignacion.itemNombre}" a "${personaNombre}"`);
+                let labelPersonaHandle = null;
+                for (const label of labelsEnItemCard) {
+                    const spanHandle = await label.$('span'); // El nombre de la persona está en un span dentro del label
+                    if (spanHandle) {
+                        const spanTexto = await spanHandle.textContent();
+                        if (spanTexto && spanTexto.trim() === personaNombre) {
+                            labelPersonaHandle = label;
+                            break;
+                        }
+                    }
+                }
+
+                if (!labelPersonaHandle) {
+                    const errorMsg = `CRITICAL: No se encontró la etiqueta de asignación para "${personaNombre}" en el artículo "${asignacion.itemNombre}".`;
+                    console.error(errorMsg);
+                    // Log para depurar los spans encontrados dentro de las labels de esta card
+                    console.log(`DEBUG: Spans encontrados en las labels de la card "${asignacion.itemNombre}":`);
+                    for (const lbl of labelsEnItemCard) {
+                        const spanH = await lbl.$('span');
+                        if (spanH) {
+                            const txt = await spanH.textContent();
+                            console.log(`  - Label con span: "${txt ? txt.trim() : "[SPAN VACÍO O NO ENCONTRADO EN LABEL]"}"`);
+                        } else {
+                            console.log("  - Label sin span interno encontrado.");
+                        }
+                    }
+                    await page.screenshot({ path: `debug_no_label_${personaNombre}_${asignacion.itemNombre.replace(/\s+/g, '_')}.png` });
+                    throw new Error(errorMsg);
+                }
+
+                // Verificar si ya está seleccionado (si la label tiene la clase bg-primary/10)
+                const labelClassName = await labelPersonaHandle.getAttribute('class');
+                const yaSeleccionado = labelClassName && labelClassName.includes('bg-primary/10');
+
+                if (!yaSeleccionado) {
+                    console.log(`"${personaNombre}" no está seleccionado para "${asignacion.itemNombre}". Haciendo clic.`);
+                    await labelPersonaHandle.click({ force: true, timeout: 3000 }); // Clic en la etiqueta
+                    sleep(0.5); // Pequeña pausa para que la UI reaccione
+                } else {
+                    console.log(`"${personaNombre}" ya está seleccionado para "${asignacion.itemNombre}". No se hace clic.`);
+                }
+            }
+        }
+
+        console.log('Todas las asignaciones de artículos han sido procesadas.');
+        sleep(1);
+
+        // --- PASO 3c: Hacer clic en "Calcular división" ---
+        console.log('Intentando hacer clic en "Calcular división"...');
+        let btnCalcular = null;
+        const allButtonsPaso3Final = await page.$$('button');
+        for (const btnHandle of allButtonsPaso3Final) {
+            const text = await btnHandle.textContent();
+            if (text && text.includes('Calcular división')) {
+                btnCalcular = btnHandle;
+                break;
+            }
+        }
+
+        if (!btnCalcular) {
+            const errorMsg = 'CRITICAL: No se encontró el botón "Calcular división".';
+            console.error(errorMsg);
+            await page.screenshot({ path: 'debug_no_btn_calcular.png' });
+            throw new Error(errorMsg);
+        }
+
+        await btnCalcular.click({ force: true, timeout: 10000 });
+        console.log('Botón "Calcular división" clicado exitosamente.');
+        sleep(3); // Espera para la carga de resultados
+
+        console.log("FIN DEL TEST E2E (SIMULADO)");
 
     } finally {
         await page.close();
