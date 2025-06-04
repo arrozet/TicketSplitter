@@ -1,113 +1,176 @@
 # TicketSplitter API
 
-Aplicación para dividir los gastos de un ticket o factura entre varias personas.
+A powerful and intuitive application designed to simplify the process of splitting bills and receipts among groups. Whether you're dining out with friends, sharing household expenses, or managing group purchases, TicketSplitter makes it effortless to divide costs fairly and accurately.
 
-## Funcionalidades
+## Core Features
 
-- Carga de imagen del ticket.
-- Procesamiento OCR para extraer texto usando Gemini AI.
-- Identificación de artículos y precios.
-- Asignación de artículos a participantes.
-- Cálculo de la parte de cada participante.
-- **NUEVA UI moderna** con Astro + shadcn/ui + Tailwind CSS.
+- **Smart Receipt Processing**:
+  - Upload any receipt or bill image
+  - Advanced OCR processing powered by Google's Gemini AI
+  - Automatic extraction of items, quantities, and prices
+  - Support for various receipt formats and layouts
 
-## Stack Tecnológico
+- **Intelligent Item Management**:
+  - Automatic item categorization
+  - Smart price detection and validation
+  - Support for multiple currencies
+  - Handling of special cases like discounts and taxes
 
-- Backend: Python, FastAPI
-- Frontend: **Astro, React, shadcn/ui, Tailwind CSS**
-- OCR: Google Gemini AI
+- **Flexible Group Management**:
+  - Add/remove participants dynamically
+  - Assign items to specific participants
+  - Handle shared items and split costs
+  - Support for different payment methods
 
-## ¡IMPORTANTE! Requisito: API Key de Gemini
+- **Advanced Calculations**:
+  - Real-time cost distribution
+  - Support for different splitting methods (equal, custom, percentage-based)
+  - Tax and tip calculations
+  - Detailed breakdown of individual shares
 
-Esta aplicación **REQUIERE** una API key de Google Gemini configurada como variable de entorno.
+- **Modern User Experience**:
+  - **NEW modern UI** with Astro + shadcn/ui + Tailwind CSS
+  - Responsive design for all devices
+  - Dark mode support
+  - Intuitive step-by-step process
+  - Real-time updates and calculations
 
-1. **Obtener API Key**: Ve a https://makersuite.google.com/app/apikey y crea una nueva API key.
-2. **Configurar Variable de Entorno**:
-   - **Temporal (solo para la sesión actual)**:
-     ```powershell
-     $env:GEMINI_API_KEY="tu-api-key-aquí"
-     ```
-   - **Permanente**: 
-     - Panel de Control → Sistema → Configuración avanzada → Variables de entorno
-     - Añadir nueva variable de usuario: `GEMINI_API_KEY` con tu API key
+## Tech Stack
 
-## Instalación y Ejecución
+- **Backend**: 
+  - Python 3.x
+  - FastAPI for high-performance API endpoints
+  - Pydantic for data validation
+  - Async support for better performance
+
+- **Frontend**: 
+  - **Astro** for optimal performance
+  - **React** for interactive components
+  - **shadcn/ui** for beautiful UI components
+  - **Tailwind CSS** for responsive styling
+
+- **AI/ML**:
+  - Google Gemini AI for advanced OCR processing
+  - Intelligent text extraction and parsing
+  - Natural language understanding for receipt analysis
+
+## IMPORTANT! Requirement: Gemini API Key
+
+This application **REQUIRES** a Google Gemini API key configured as an environment variable.
+
+1.  **Get API Key**: Go to https://makersuite.google.com/app/apikey and create a new API key.
+2.  **Set Environment Variable**:
+    -   **Temporary (current session only)**:
+        ```powershell
+        $env:GEMINI_API_KEY="your-api-key-here"
+        ```
+    -   **Permanent**:
+        -   Control Panel → System → Advanced system settings → Environment Variables
+        -   Add a new user variable: `GEMINI_API_KEY` with your API key.
+
+## Installation and Execution
 
 ### Backend (FastAPI)
 
-1. **Configurar el entorno virtual**:
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\activate  # En Windows
-   ```
+1.  **Set up the virtual environment**:
+    ```bash
+    python -m venv venv
+    .\venv\Scripts\activate  # On Windows
+    ```
 
-2. **Instalar dependencias**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+2.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-3. **Configurar la API key de Gemini** (ver sección anterior).
+3.  **Set up the Gemini API key** (see previous section).
 
-4. **Ejecutar el backend**:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
+4.  **Run the backend**:
+    ```bash
+    uvicorn app.main:app --reload --port 8000
+    ```
 
 ### Frontend (Astro + shadcn/ui)
 
-1. **Navegar al directorio del frontend**:
-   ```bash
-   cd frontend-new
-   ```
+1.  **Navigate to the frontend directory**:
+    ```bash
+    cd frontend-new
+    ```
 
-2. **Instalar dependencias**:
-   ```bash
-   npm install
-   ```
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-3. **Ejecutar el frontend**:
-   ```bash
-   npm run dev
-   ```
+3.  **Run the frontend**:
+    ```bash
+    npm run dev
+    ```
 
-## Acceso a la Aplicación
+## Running Tests
 
-- **Frontend moderno**: http://localhost:4321 (Astro)
-- **Frontend clásico**: http://localhost:8080 (si usas `python -m http.server 8080` desde `frontend/`)
-- **Backend API**: http://localhost:8000
-- **Documentación API**: http://localhost:8000/docs
+### Python Tests (from the project root)
+```bash
+pytest --cov=app --cov-branch --cov-report=html tests/
+```
 
-## Características de la Nueva UI
+### End-to-End (E2E) Tests (from the project root)
+First, set the environment variable:
+```powershell
+$env:K6_BROWSER_HEADLESS="false" 
+```
+Then, run the k6 tests:
+```bash
+k6 run tests/test_e2e.js
+```
 
-✨ **Interfaz moderna y responsive** con shadcn/ui
-🎨 **Diseño elegante** con gradientes y animaciones
-📱 **Totalmente responsive** para móviles y tablets
-🔄 **Indicador de progreso** visual por pasos
-⚡ **Componentes reutilizables** y bien estructurados
-🌙 **Soporte para modo oscuro**
-🎯 **UX mejorada** con mejor feedback visual
+## Accessing the Application
 
-## Estructura del Proyecto
+-   **Modern Frontend**: http://localhost:4321 (Astro)
+-   **Classic Frontend**: http://localhost:8080 (if you use `python -m http.server 8080` from `frontend/`)
+-   **Backend API**: http://localhost:8000
+-   **API Documentation**: http://localhost:8000/docs
+
+## New UI Features
+
+✨ **Modern and responsive interface** with shadcn/ui
+🎨 **Elegant design** with gradients and animations
+📱 **Fully responsive** for mobile and tablets
+🔄 **Visual progress indicator** by steps
+⚡ **Reusable and well-structured components**
+🌙 **Dark mode support**
+🎯 **Improved UX** with better visual feedback
+
+## Project Structure
 
 ```
 TicketSplitter/
 ├── app/                    # Backend FastAPI
-├── frontend/              # Frontend clásico (HTML/JS)
-├── frontend-new/          # Frontend moderno (Astro + shadcn/ui)
+│   ├── api/               # API endpoints
+│   │   └── endpoints/     # Route handlers
+│   ├── models/           # Data models
+│   └── services/         # Business logic
+├── frontend-new/         # Modern Frontend (Astro + shadcn/ui)
 │   ├── src/
-│   │   ├── components/    # Componentes React
-│   │   ├── layouts/       # Layouts de Astro
-│   │   ├── pages/         # Páginas de Astro
-│   │   └── styles/        # Estilos globales
-├── tests/                 # Tests
-└── requirements.txt       # Dependencias Python
+│   │   ├── components/   # React Components
+│   │   │   └── ui/      # shadcn/ui components
+│   │   ├── layouts/     # Astro Layouts
+│   │   ├── pages/       # Astro Pages
+│   │   └── styles/      # Global Styles
+│   └── public/          # Static assets
+├── tests/               # Test suite
+│   ├── api/            # API tests
+│   ├── models/         # Model tests
+│   └── services/       # Service tests
+├── docs/               # Documentation
+└── requirements.txt    # Python Dependencies
 ```
 
-## Desarrollo
+## Development
 
-Para desarrollo, ejecuta ambos servidores:
-1. Backend en puerto 8000
-2. Frontend en puerto 4321 (Astro) o 8080 (clásico)
+For development, run both servers:
+1.  Backend on port 8000
+2.  Frontend on port 4321 (Astro) or 8080 (classic)
 
-La nueva UI en Astro ofrece una experiencia mucho más moderna y profesional.
+The new UI in Astro offers a much more modern and professional experience.
 
