@@ -9,4 +9,5 @@ numpy
 google-generativeai
 # pytest
 # httpx
-bulma 
+bulma
+pytest-cov==4.1.0  # Para medir la cobertura de código en los tests 
