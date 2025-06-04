@@ -126,7 +126,7 @@ venv.bak/
 
 # static/
 # data/
-*.png
+#*.png
 # *.jpg
 *.jpeg
 *.gif
