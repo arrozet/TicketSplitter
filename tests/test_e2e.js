@@ -198,7 +198,117 @@ export default async function () {
             }
         });
 
+        console.log('Paso 2: Revisión de artículos completada.');
         sleep(2);
+
+        // --- PASO 2 a PASO 3: Hacer clic en "Continuar a asignación" ---
+        console.log('Intentando hacer clic en "Continuar a asignación"...');
+        const continuarBtnText = 'Continuar a asignación'; // Texto exacto del botón
+        let continuarBtnHandle = null;
+        const allButtonsPaso2 = await page.$$('button');
+        for (const btnHandle of allButtonsPaso2) {
+            const text = await btnHandle.textContent();
+            if (text && text.trim() === continuarBtnText) {
+                continuarBtnHandle = btnHandle;
+                break;
+            }
+        }
+
+        if (!continuarBtnHandle) {
+            console.error(`CRITICAL: No se encontró el botón "${continuarBtnText}".`);
+            await page.screenshot({ path: 'debug_no_continuar_btn.png' });
+            throw new Error(`No se encontró el botón "${continuarBtnText}"`);
+        }
+
+        try {
+            await continuarBtnHandle.click({ force: true, timeout: 10000 });
+            console.log(`Botón "${continuarBtnText}" clicado exitosamente (con force=true).`);
+        } catch (clickError) {
+            console.error(`ERROR CRÍTICO al hacer clic en "${continuarBtnText}": ${clickError.message}`);
+            await page.screenshot({ path: 'debug_continuar_btn_clic_fallido.png' });
+            throw clickError;
+        }
+
+        console.log('Esperando a que cargue el Paso 3: Asignar personas...');
+        sleep(3); // Espera para la transición al siguiente paso
+
+        // --- PASO 3: Añadir personas "Cristian" y "Cbarba" ---
+        console.log('Paso 3: Añadiendo personas...');
+        const personasParaAnadir = ["Cristian", "Cbarba"];
+        const inputSelectorPersonas = 'input[placeholder="Nombre de la persona"]';
+
+        for (const persona of personasParaAnadir) {
+            console.log(`Intentando añadir a: ${persona}`);
+            
+            const inputNombre = await page.$(inputSelectorPersonas);
+            if (!inputNombre) {
+                const errorMsg = `CRITICAL: No se encontró el input para añadir personas con selector: ${inputSelectorPersonas}`;
+                console.error(errorMsg);
+                await page.screenshot({ path: `debug_no_input_personas_${persona}.png` });
+                throw new Error(errorMsg);
+            }
+            // Limpiar el input antes de escribir, por si acaso
+            await inputNombre.evaluate(input => input.value = ''); 
+            await inputNombre.type(persona, { delay: 100 });
+            console.log(`Nombre "${persona}" escrito en el input.`);
+            sleep(0.5);
+
+            // Localizar y hacer clic en el botón "Añadir" que está junto al input de nombre
+            let btnAnadir = null;
+            const allButtonsPaso3 = await page.$$('button');
+            for (const btnHandle of allButtonsPaso3) {
+                const text = await btnHandle.textContent();
+                // Buscamos un botón que contenga exactamente el texto "Añadir" y esté visible.
+                // Podríamos añadir comprobaciones de proximidad al input si fuera necesario.
+                if (text && text.trim() === 'Añadir') {
+                    if (await btnHandle.isVisible()) {
+                        btnAnadir = btnHandle;
+                        break;
+                    }
+                }
+            }
+            
+            if (!btnAnadir) {
+                const errorMsg = `CRITICAL: No se encontró el botón "Añadir" visible para ${persona}.`;
+                console.error(errorMsg);
+                await page.screenshot({ path: `debug_no_btn_anadir_${persona}.png` });
+                throw new Error(errorMsg);
+            }
+            
+            console.log('Botón "Añadir" encontrado, intentando clic...');
+            await btnAnadir.click({ force: true, timeout: 5000 });
+            console.log(`Botón "Añadir" clicado para ${persona}.`);
+            // Esperar a que la UI se actualice y el nombre aparezca en la lista (o el input se limpie)
+            // Una forma de esperar es que el input vuelva a estar vacío
+            try {
+                await page.waitForFunction((selector) => {
+                    const inputElement = document.querySelector(selector);
+                    return inputElement && inputElement.value === '';
+                }, inputSelectorPersonas, { timeout: 5000 });
+                console.log(`Input de personas vacío después de añadir a ${persona}. UI actualizada.`);
+            } catch (e) {
+                console.warn(`Advertencia: El input de personas no se vació después de añadir a ${persona} o no se pudo verificar.`);
+                // Considerar tomar screenshot aquí si esto es un problema recurrente
+                // await page.screenshot({ path: `debug_input_no_vacio_${persona}.png` });
+                sleep(1); // Pausa alternativa si la espera de función falla
+            }
+        }
+
+        console.log('Todas las personas especificadas han sido procesadas.');
+        
+        // Aquí podrías añadir verificaciones para asegurar que las personas están en la lista
+        // Por ejemplo, buscar elementos que contengan "Cristian" y "Cbarba" en la UI.
+        // Ejemplo de verificación (descomentar y adaptar si es necesario):
+        // for (const persona of personasParaAnadir) {
+        //     const personaEnLista = await page.$(`*:has-text("${persona}")`);
+        //     if (!personaEnLista) {
+        //         await page.screenshot({ path: `debug_persona_no_en_lista_${persona}.png` });
+        //         throw new Error(`Error de verificación: ${persona} no fue encontrada en la lista de personas añadidas.`);
+        //     }
+        //     console.log(`${persona} encontrada en la lista de personas añadidas.`);
+        // }
+
+        sleep(2); // Pausa final para observar si es necesario antes de cerrar.
 
     } finally {
         await page.close();
